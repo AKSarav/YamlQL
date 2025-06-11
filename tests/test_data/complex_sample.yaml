@@ -1,0 +1,44 @@
+project_name: "Mega Service"
+version: "2.1.0"
+
+environments:
+  - name: "development"
+    enabled: true
+    config:
+      cpu: "256m"
+      memory: "512Mi"
+      database:
+        host: "dev-db.internal"
+        port: 5432
+        credentials:
+          username: "dev_user"
+          # password deliberately omitted for this environment
+    services:
+      - name: "api-gateway"
+        port: 8080
+        routes: ["/api/v1", "/api/v2"]
+      - name: "user-service"
+        port: 9001
+        routes: ["/users/*"]
+        
+  - name: "production"
+    enabled: false
+    config:
+      cpu: "1024m"
+      memory: "2048Mi"
+      database:
+        host: "prod-db.internal"
+        port: 5432
+        credentials:
+          username: "prod_user"
+          password_secret_ref: "prod-db-password"
+    services:
+      - name: "api-gateway"
+        port: 80
+        routes: ["/api/v1", "/api/v2"]
+      - name: "user-service"
+        port: 9001
+        routes: ["/users/*"]
+      - name: "monitoring-agent"
+        port: 8888
+        routes: [] # An empty list 

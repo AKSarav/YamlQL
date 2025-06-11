@@ -1,0 +1,136 @@
+system:
+  application:
+    id: user-service
+    version: 2.1.0
+    owner:
+      name: sarav
+      contact:
+        email: sarav@example.com
+        phone: "+91-1234567890"
+        location:
+          country: India
+          timezone: Asia/Kolkata
+          coordinates:
+            lat: 12.9716
+            long: 77.5946
+            elevation:
+              unit: meters
+              value: 920
+    deployment:
+      region: ap-south-1
+      cluster:
+        name: prod-cluster-01
+        node_pool:
+          default:
+            count: 5
+            autoscaling:
+              enabled: true
+              limits:
+                min: 3
+                max: 10
+            taints:
+              - key: workload
+                value: critical
+                effect: NoSchedule
+
+  services:
+    api_gateway:
+      url: https://api.example.com
+      timeout_ms: 3000
+      security:
+        auth:
+          method: oauth2
+          oauth2:
+            client_id: abc123
+            client_secret: "{{ secrets.api_gateway_secret }}"
+            token_url: https://auth.example.com/token
+        rate_limit:
+          enabled: true
+          burst: 100
+          sustained: 50
+
+    payment:
+      provider: stripe
+      config:
+        key: "{{ secrets.stripe_key }}"
+        webhook:
+          enabled: true
+          retries:
+            count: 3
+            delay_ms: 1000
+            backoff_strategy:
+              type: exponential
+              jitter: true
+
+  features:
+    identity:
+      enabled: true
+      modules:
+        biometric:
+          face_id:
+            enabled: true
+            fallback: pin
+            ui:
+              theme:
+                dark_mode:
+                  background: "#111"
+                  text: "#fff"
+        kyc:
+          levels:
+            basic:
+              required_fields:
+                - name
+                - phone
+                - email
+            advanced:
+              document_verification:
+                types:
+                  - aadhaar
+                  - passport
+                retry_policy:
+                  max_attempts: 2
+                  escalation:
+                    enabled: true
+                    notify:
+                      channels:
+                        - email
+                        - slack
+                      template_id: escalation_notice_v2
+
+  monitoring:
+    alerts:
+      enabled: true
+      thresholds:
+        cpu:
+          warning: 70
+          critical: 90
+        memory:
+          warning: 75
+          critical: 95
+      escalation:
+        policy:
+          step1:
+            wait_minutes: 5
+            notify:
+              - team: devops
+                method: slack
+              - team: sre
+                method: pagerduty
+          step2:
+            wait_minutes: 15
+            notify:
+              - team: security
+                method: email
+
+  audit:
+    pipelines:
+      - id: logstream-prod
+        sinks:
+          - type: s3
+            bucket: audit-logs-prod
+            prefix: "year={{year}}/month={{month}}/"
+          - type: elasticsearch
+            endpoint: https://es.example.com/audit
+            index_strategy:
+              pattern: "audit-{{env}}-{{yyyy_mm_dd}}"
+              rotation: daily

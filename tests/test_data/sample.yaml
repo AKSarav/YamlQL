@@ -1,0 +1,32 @@
+users:
+  - id: 1
+    name: John Doe
+    email: john.doe@example.com
+    roles:
+      - admin
+      - editor
+    address:
+      street: 123 Main St
+      city: Anytown
+  - id: 2
+    name: Jane Smith
+    email: jane.smith@example.com
+    roles:
+      - viewer
+    address:
+      street: 456 Oak Ave
+      city: Sometown
+settings:
+  site_name: "My Awesome Site"
+  feature_flags:
+    new_dashboard: true
+    user_avatars: false
+posts:
+  - id: 101
+    title: "First Post"
+    author_id: 1
+    tags: ["news", "tech"]
+  - id: 102
+    title: "Second Post"
+    author_id: 1
+    tags: ["devops", "yaml"] 

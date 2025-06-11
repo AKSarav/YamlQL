@@ -1,0 +1,45 @@
+# Case 1: Null value variations
+database:
+  host: "db.example.com"
+  port: 5432
+  user: "admin"
+  password: null # standard null
+  backup_schedule: ~ # tilde null
+  description: # empty key null
+
+# Case 2: YAML Aliases and Anchors
+defaults: &defaults
+  adapter: postgres
+  host: localhost
+
+development:
+  <<: *defaults # Merging the defaults
+  database: dev_db
+
+production:
+  <<: *defaults # Merging the defaults
+  adapter: postgres_prod # Overriding a value
+  database: prod_db
+
+# Case 3: List of simple scalar values
+supported_regions:
+  - us-east-1
+  - eu-west-2
+  - ap-south-1
+
+# Case 4: A list mixing objects and scalar values (should be ignored by current logic)
+mixed_content:
+  - name: "Valid Item 1"
+    value: 100
+  - "Just a string"
+  - 42
+  - name: "Valid Item 2"
+    value: 200
+
+# Case 5: Empty list of objects
+empty_list_of_objects: []
+
+# Case 6: Key with special characters
+"user-settings":
+  "font size": 14
+  "background.color": "dark-grey" 

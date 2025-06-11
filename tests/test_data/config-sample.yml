@@ -1,0 +1,62 @@
+application:
+  name: user-service
+  version: 1.2.3
+  environment: production
+  metadata:
+    owner:
+      name: sarav
+      email: sarav@example.com
+      contact:
+        phone: "+91-1234567890"
+        timezone: IST
+        location:
+          country: India
+          region: South
+          coordinates:
+            lat: 12.9716
+            long: 77.5946
+  services:
+    auth:
+      endpoint: https://auth.example.com
+      retries:
+        max_attempts: 3
+        backoff:
+          type: exponential
+          base_delay_ms: 500
+    logging:
+      level: INFO
+      destinations:
+        - type: cloudwatch
+          config:
+            region: ap-south-1
+            log_group: /aws/user-service
+        - type: file
+          config:
+            path: /var/log/user-service/app.log
+            rotation:
+              enabled: true
+              interval: daily
+              retention_days: 7
+  features:
+    onboarding:
+      enabled: true
+      flow:
+        steps:
+          - id: email_verification
+            mandatory: true
+            ui:
+              title: "Verify Email"
+              timeout_seconds: 120
+          - id: phone_verification
+            mandatory: false
+            ui:
+              title: "Verify Phone"
+              timeout_seconds: 90
+        post_hooks:
+          notify:
+            enabled: true
+            webhook:
+              url: https://hooks.example.com/onboarding
+              auth:
+                type: bearer
+                token: "{{ secrets.webhook_token }}"
