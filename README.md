@@ -285,9 +285,9 @@ If you have any questions or feedback, please feel free to contact me in LinkedI
 - [ ] Finishing the YamlQL-Web project which is in progress - Stay tuned!
 
 
-## If you like this project, Please star it on GitHub!
+## If you like this project, Please ⭐⭐⭐⭐⭐ it on GitHub!
 
 https://github.com/AKSarav/YamlQL
 
-⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+
 
