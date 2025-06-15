@@ -1,6 +1,6 @@
 [project]
 name = "yamlql"
-version = "0.1.2"
+version = "0.1.2.1"
 description = "Query YAML files with SQL"
 authors = [
     { name = "Sarav", email = "sarav@users.noreply.github.com" },
