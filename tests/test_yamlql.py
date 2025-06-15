@@ -238,5 +238,31 @@ def test_special_characters_in_keys(edge_case_yql_instance):
     """Test that keys with spaces and dots are flattened correctly."""
     # Note: the transformer sanitizes 'font size' to 'font_size' and 'background.color' to 'background_color'
     results = edge_case_yql_instance.query("SELECT font_size, background_color FROM \"user-settings\"")
-    assert results['font_size'][0] == 14
-    assert results['background_color'][0] == 'dark-grey' 
+    assert results['font_size'].item() == 14
+    assert results['background_color'].item() == 'dark-grey'
+
+# --- Tests for Multi-Document YAML file ---
+
+MULTI_DOC_PATH = "tests/test_data/multiple-entries.yaml"
+
+@pytest.fixture
+def multi_doc_yql_instance():
+    """Fixture for the multi-document YAML file."""
+    instance = YamlQL(file_path=MULTI_DOC_PATH)
+    yield instance
+    instance.close()
+
+def test_multi_doc_table_creation(multi_doc_yql_instance):
+    """Test that tables are created from all documents in a multi-document file."""
+    tables = multi_doc_yql_instance.list_tables()
+    
+    # Check that tables from all documents are present
+    assert "application" in tables
+    assert "database" in tables
+    assert "logging" in tables
+    assert "features" in tables
+    assert "monitoring" in tables
+    
+    # Check that a nested list from one of the documents was also extracted
+    assert "logging_destinations" in tables
+    assert "monitoring_escalation_contacts" in tables 

@@ -1,7 +1,7 @@
 [project]
 name = "yamlql"
-version = "0.1.0"
-description = "Query YAML files with SQL using DuckDB."
+version = "0.1.2"
+description = "Query YAML files with SQL"
 authors = [
     { name = "Sarav", email = "sarav@users.noreply.github.com" },
 ]
@@ -10,14 +10,24 @@ requires-python = ">=3.9"
 dependencies = [
     "duckdb>=0.9.0",
     "pyyaml>=6.0",
-    "typer[all]>=0.9.0",
+    "typer>=0.9.0",
     "pandas>=2.0.0",
-    "rich",
+    "rich>=13.0.0",
+    "python-dotenv>=1.1.0",
+    "openai>=1.86.0",
+    "google>=3.0.0",
+    "google-generativeai>=0.8.5",
+    "urllib3<2.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+]
+nlp = [
+    "python-dotenv>=1.0.0",
+    "openai>=1.0.0",
+    "google-generativeai>=0.5.0",
 ]
 
 [project.scripts]

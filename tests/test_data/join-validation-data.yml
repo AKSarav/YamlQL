@@ -1,0 +1,22 @@
+# sample_data.yml
+users:
+  - id: 1
+    name: Alice
+    email: alice@example.com
+  - id: 2
+    name: Bob
+    email: bob@example.com
+
+orders:
+  - id: 101
+    user_id: 1
+    product: "Laptop"
+    amount: 1200
+  - id: 102
+    user_id: 2
+    product: "Smartphone"
+    amount: 800
+  - id: 103
+    user_id: 1
+    product: "Tablet"
+    amount: 600 

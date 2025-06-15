@@ -67,22 +67,27 @@ class DataTransformer:
     def transform(self) -> List[Tuple[str, pd.DataFrame]]:
         """
         Transforms the dictionary data into a list of named DataFrames.
-        - If a single root key is found (e.g., 'system'), its children are used as tables.
+        - If there are fewer than three root keys, the children of the single root key are used as tables.
         - Otherwise, top-level keys are used as tables.
         """
         tables = []
         data_copy = copy.deepcopy(self.data)
 
-        # Heuristic: If there's a single top-level key with a dict value,
-        # assume the user wants to treat the keys of that inner dict as tables.
+        # Heuristic: If there are fewer than three top-level keys,
+        # assume the user wants to treat the keys of the inner dict as tables.
         top_level_keys = list(data_copy.keys())
-        if len(top_level_keys) == 1 and isinstance(data_copy[top_level_keys[0]], dict):
+        if len(top_level_keys) < 3 and isinstance(data_copy[top_level_keys[0]], dict):
             source_data = data_copy[top_level_keys[0]]
         else:
             source_data = data_copy
 
         for table_name, value in source_data.items():
-            if isinstance(value, list) and value:
+            if isinstance(value, dict) and len(value) > 1:
+                # Create a separate table for each child if there are multiple children
+                for child_name, child_value in value.items():
+                    if isinstance(child_value, dict) or isinstance(child_value, list):
+                        tables.extend(self._normalize_records(f"{table_name}_{child_name}", [child_value]))
+            elif isinstance(value, list) and value:
                 # Check if it's a list of objects or a list of scalars
                 if all(isinstance(item, dict) for item in value):
                     tables.extend(self._normalize_records(table_name, value))

@@ -1,9 +1,10 @@
 import yaml
 from pathlib import Path
 from typing import Any, Dict
+import re
 
 class YamlLoader:
-    """Loads content from a YAML file."""
+    """Loads content from a YAML file, with support for multi-document streams."""
 
     def __init__(self, file_path: Path):
         """
@@ -18,13 +19,36 @@ class YamlLoader:
 
     def load(self) -> Dict[str, Any]:
         """
-        Loads the YAML content from the file.
+        Loads YAML content from the file. If it's a multi-document file
+        (separated by '---'), it merges all documents into a single dictionary.
 
         Returns:
-            A dictionary representing the YAML content.
+            A dictionary representing the (potentially merged) YAML content.
         """
         with open(self.file_path, 'r') as f:
-            return yaml.safe_load(f)
+            content = f.read()
+
+        # Pre-process the content to handle common multi-document formatting issues
+        # Replace '------' with '---' and ensure separators are on their own lines
+        processed_content = re.sub(r'^\s*-{3,}\s*$', '---', content, flags=re.MULTILINE)
+
+        # Use safe_load_all to handle multi-document YAML files
+        documents = list(yaml.safe_load_all(processed_content))
+
+        if not documents:
+            return {}
+        
+        if len(documents) == 1:
+            return documents[0]
+        
+        # Merge all documents into one. This assumes keys are unique across documents
+        # or that later documents are intended to override earlier ones.
+        merged_data = {}
+        for doc in documents:
+            if isinstance(doc, dict):
+                merged_data.update(doc)
+        
+        return merged_data
 
 def load_yaml(file_path: str) -> Dict[str, Any]:
     """

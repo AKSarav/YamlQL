@@ -1,0 +1,90 @@
+# Application Metadata
+application:
+  name: user-service
+  version: 2.1.0
+  environment: production
+  owner:
+    name: Sarav
+    email: sarav@example.com
+    team: SRE
+
+------
+# Database Configuration
+database:
+  engine: postgres
+  host: db.example.com
+  port: 5432
+  username: dbadmin
+  password: "{{ secrets.db_password }}"
+  pool:
+    min_connections: 5
+    max_connections: 20
+
+------
+# Logging Settings
+logging:
+  level: INFO
+  destinations:
+    - type: file
+      path: /var/log/user-service/app.log
+    - type: cloudwatch
+      group: /aws/user-service
+      region: ap-south-1
+
+------
+# Feature Flags
+features:
+  onboarding:
+    enabled: true
+    steps:
+      - email_verification
+      - phone_verification
+  kyc:
+    enabled: false
+    provider: null
+
+------
+# Alerting & Monitoring
+monitoring:
+  alerts_enabled: true
+  thresholds:
+    cpu:
+      warning: 75
+      critical: 90
+    memory:
+      warning: 70
+      critical: 85
+  escalation:
+    contacts:
+      - team: devops
+        method: slack
+      - team: sre
+        method: pagerduty
+
+------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "256Mi"  # Maximum memory allowed
+            cpu: "200m"       # Maximum CPU allowed (200 milliCPU)
+          requests:
+            memory: "128Mi"  # Initial memory request
+            cpu: "100m"       # Initial CPU request

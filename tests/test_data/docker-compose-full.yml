@@ -1,0 +1,1125 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: exampledb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    volumes:
+    - pgdata:/var/lib/postgresql/data
+    ports:
+    - 5432:5432
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    ports:
+    - 6379:6379
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpass
+    ports:
+    - 3306:3306
+    volumes:
+    - mysqldata:/var/lib/mysql
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    restart: always
+    ports:
+    - 6333:6333
+    volumes:
+    - qdrantdata:/qdrant/storage
+  service1:
+    image: myorg/service1:latest
+    container_name: service1
+    restart: on-failure
+    environment:
+      SERVICE_ID: '1'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 801:80
+  service2:
+    image: myorg/service2:latest
+    container_name: service2
+    restart: on-failure
+    environment:
+      SERVICE_ID: '2'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 802:80
+  service3:
+    image: myorg/service3:latest
+    container_name: service3
+    restart: on-failure
+    environment:
+      SERVICE_ID: '3'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 803:80
+  service4:
+    image: myorg/service4:latest
+    container_name: service4
+    restart: on-failure
+    environment:
+      SERVICE_ID: '4'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 804:80
+  service5:
+    image: myorg/service5:latest
+    container_name: service5
+    restart: on-failure
+    environment:
+      SERVICE_ID: '5'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 805:80
+  service6:
+    image: myorg/service6:latest
+    container_name: service6
+    restart: on-failure
+    environment:
+      SERVICE_ID: '6'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 806:80
+  service7:
+    image: myorg/service7:latest
+    container_name: service7
+    restart: on-failure
+    environment:
+      SERVICE_ID: '7'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 807:80
+  service8:
+    image: myorg/service8:latest
+    container_name: service8
+    restart: on-failure
+    environment:
+      SERVICE_ID: '8'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 808:80
+  service9:
+    image: myorg/service9:latest
+    container_name: service9
+    restart: on-failure
+    environment:
+      SERVICE_ID: '9'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 809:80
+  service10:
+    image: myorg/service10:latest
+    container_name: service10
+    restart: on-failure
+    environment:
+      SERVICE_ID: '10'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8010:80
+  service11:
+    image: myorg/service11:latest
+    container_name: service11
+    restart: on-failure
+    environment:
+      SERVICE_ID: '11'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8011:80
+  service12:
+    image: myorg/service12:latest
+    container_name: service12
+    restart: on-failure
+    environment:
+      SERVICE_ID: '12'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8012:80
+  service13:
+    image: myorg/service13:latest
+    container_name: service13
+    restart: on-failure
+    environment:
+      SERVICE_ID: '13'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8013:80
+  service14:
+    image: myorg/service14:latest
+    container_name: service14
+    restart: on-failure
+    environment:
+      SERVICE_ID: '14'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8014:80
+  service15:
+    image: myorg/service15:latest
+    container_name: service15
+    restart: on-failure
+    environment:
+      SERVICE_ID: '15'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8015:80
+  service16:
+    image: myorg/service16:latest
+    container_name: service16
+    restart: on-failure
+    environment:
+      SERVICE_ID: '16'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8016:80
+  service17:
+    image: myorg/service17:latest
+    container_name: service17
+    restart: on-failure
+    environment:
+      SERVICE_ID: '17'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8017:80
+  service18:
+    image: myorg/service18:latest
+    container_name: service18
+    restart: on-failure
+    environment:
+      SERVICE_ID: '18'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8018:80
+  service19:
+    image: myorg/service19:latest
+    container_name: service19
+    restart: on-failure
+    environment:
+      SERVICE_ID: '19'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8019:80
+  service20:
+    image: myorg/service20:latest
+    container_name: service20
+    restart: on-failure
+    environment:
+      SERVICE_ID: '20'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8020:80
+  service21:
+    image: myorg/service21:latest
+    container_name: service21
+    restart: on-failure
+    environment:
+      SERVICE_ID: '21'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8021:80
+  service22:
+    image: myorg/service22:latest
+    container_name: service22
+    restart: on-failure
+    environment:
+      SERVICE_ID: '22'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8022:80
+  service23:
+    image: myorg/service23:latest
+    container_name: service23
+    restart: on-failure
+    environment:
+      SERVICE_ID: '23'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8023:80
+  service24:
+    image: myorg/service24:latest
+    container_name: service24
+    restart: on-failure
+    environment:
+      SERVICE_ID: '24'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8024:80
+  service25:
+    image: myorg/service25:latest
+    container_name: service25
+    restart: on-failure
+    environment:
+      SERVICE_ID: '25'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8025:80
+  service26:
+    image: myorg/service26:latest
+    container_name: service26
+    restart: on-failure
+    environment:
+      SERVICE_ID: '26'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8026:80
+  service27:
+    image: myorg/service27:latest
+    container_name: service27
+    restart: on-failure
+    environment:
+      SERVICE_ID: '27'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8027:80
+  service28:
+    image: myorg/service28:latest
+    container_name: service28
+    restart: on-failure
+    environment:
+      SERVICE_ID: '28'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8028:80
+  service29:
+    image: myorg/service29:latest
+    container_name: service29
+    restart: on-failure
+    environment:
+      SERVICE_ID: '29'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8029:80
+  service30:
+    image: myorg/service30:latest
+    container_name: service30
+    restart: on-failure
+    environment:
+      SERVICE_ID: '30'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8030:80
+  service31:
+    image: myorg/service31:latest
+    container_name: service31
+    restart: on-failure
+    environment:
+      SERVICE_ID: '31'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8031:80
+  service32:
+    image: myorg/service32:latest
+    container_name: service32
+    restart: on-failure
+    environment:
+      SERVICE_ID: '32'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8032:80
+  service33:
+    image: myorg/service33:latest
+    container_name: service33
+    restart: on-failure
+    environment:
+      SERVICE_ID: '33'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8033:80
+  service34:
+    image: myorg/service34:latest
+    container_name: service34
+    restart: on-failure
+    environment:
+      SERVICE_ID: '34'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8034:80
+  service35:
+    image: myorg/service35:latest
+    container_name: service35
+    restart: on-failure
+    environment:
+      SERVICE_ID: '35'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8035:80
+  service36:
+    image: myorg/service36:latest
+    container_name: service36
+    restart: on-failure
+    environment:
+      SERVICE_ID: '36'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8036:80
+  service37:
+    image: myorg/service37:latest
+    container_name: service37
+    restart: on-failure
+    environment:
+      SERVICE_ID: '37'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8037:80
+  service38:
+    image: myorg/service38:latest
+    container_name: service38
+    restart: on-failure
+    environment:
+      SERVICE_ID: '38'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8038:80
+  service39:
+    image: myorg/service39:latest
+    container_name: service39
+    restart: on-failure
+    environment:
+      SERVICE_ID: '39'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8039:80
+  service40:
+    image: myorg/service40:latest
+    container_name: service40
+    restart: on-failure
+    environment:
+      SERVICE_ID: '40'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8040:80
+  service41:
+    image: myorg/service41:latest
+    container_name: service41
+    restart: on-failure
+    environment:
+      SERVICE_ID: '41'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8041:80
+  service42:
+    image: myorg/service42:latest
+    container_name: service42
+    restart: on-failure
+    environment:
+      SERVICE_ID: '42'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8042:80
+  service43:
+    image: myorg/service43:latest
+    container_name: service43
+    restart: on-failure
+    environment:
+      SERVICE_ID: '43'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8043:80
+  service44:
+    image: myorg/service44:latest
+    container_name: service44
+    restart: on-failure
+    environment:
+      SERVICE_ID: '44'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8044:80
+  service45:
+    image: myorg/service45:latest
+    container_name: service45
+    restart: on-failure
+    environment:
+      SERVICE_ID: '45'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8045:80
+  service46:
+    image: myorg/service46:latest
+    container_name: service46
+    restart: on-failure
+    environment:
+      SERVICE_ID: '46'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8046:80
+  service47:
+    image: myorg/service47:latest
+    container_name: service47
+    restart: on-failure
+    environment:
+      SERVICE_ID: '47'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8047:80
+  service48:
+    image: myorg/service48:latest
+    container_name: service48
+    restart: on-failure
+    environment:
+      SERVICE_ID: '48'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8048:80
+  service49:
+    image: myorg/service49:latest
+    container_name: service49
+    restart: on-failure
+    environment:
+      SERVICE_ID: '49'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8049:80
+  service50:
+    image: myorg/service50:latest
+    container_name: service50
+    restart: on-failure
+    environment:
+      SERVICE_ID: '50'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8050:80
+  service51:
+    image: myorg/service51:latest
+    container_name: service51
+    restart: on-failure
+    environment:
+      SERVICE_ID: '51'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8051:80
+  service52:
+    image: myorg/service52:latest
+    container_name: service52
+    restart: on-failure
+    environment:
+      SERVICE_ID: '52'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8052:80
+  service53:
+    image: myorg/service53:latest
+    container_name: service53
+    restart: on-failure
+    environment:
+      SERVICE_ID: '53'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8053:80
+  service54:
+    image: myorg/service54:latest
+    container_name: service54
+    restart: on-failure
+    environment:
+      SERVICE_ID: '54'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8054:80
+  service55:
+    image: myorg/service55:latest
+    container_name: service55
+    restart: on-failure
+    environment:
+      SERVICE_ID: '55'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8055:80
+  service56:
+    image: myorg/service56:latest
+    container_name: service56
+    restart: on-failure
+    environment:
+      SERVICE_ID: '56'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8056:80
+  service57:
+    image: myorg/service57:latest
+    container_name: service57
+    restart: on-failure
+    environment:
+      SERVICE_ID: '57'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8057:80
+  service58:
+    image: myorg/service58:latest
+    container_name: service58
+    restart: on-failure
+    environment:
+      SERVICE_ID: '58'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8058:80
+  service59:
+    image: myorg/service59:latest
+    container_name: service59
+    restart: on-failure
+    environment:
+      SERVICE_ID: '59'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8059:80
+  service60:
+    image: myorg/service60:latest
+    container_name: service60
+    restart: on-failure
+    environment:
+      SERVICE_ID: '60'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8060:80
+  service61:
+    image: myorg/service61:latest
+    container_name: service61
+    restart: on-failure
+    environment:
+      SERVICE_ID: '61'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8061:80
+  service62:
+    image: myorg/service62:latest
+    container_name: service62
+    restart: on-failure
+    environment:
+      SERVICE_ID: '62'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8062:80
+  service63:
+    image: myorg/service63:latest
+    container_name: service63
+    restart: on-failure
+    environment:
+      SERVICE_ID: '63'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8063:80
+  service64:
+    image: myorg/service64:latest
+    container_name: service64
+    restart: on-failure
+    environment:
+      SERVICE_ID: '64'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8064:80
+  service65:
+    image: myorg/service65:latest
+    container_name: service65
+    restart: on-failure
+    environment:
+      SERVICE_ID: '65'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8065:80
+  service66:
+    image: myorg/service66:latest
+    container_name: service66
+    restart: on-failure
+    environment:
+      SERVICE_ID: '66'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8066:80
+  service67:
+    image: myorg/service67:latest
+    container_name: service67
+    restart: on-failure
+    environment:
+      SERVICE_ID: '67'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8067:80
+  service68:
+    image: myorg/service68:latest
+    container_name: service68
+    restart: on-failure
+    environment:
+      SERVICE_ID: '68'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8068:80
+  service69:
+    image: myorg/service69:latest
+    container_name: service69
+    restart: on-failure
+    environment:
+      SERVICE_ID: '69'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8069:80
+  service70:
+    image: myorg/service70:latest
+    container_name: service70
+    restart: on-failure
+    environment:
+      SERVICE_ID: '70'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8070:80
+  service71:
+    image: myorg/service71:latest
+    container_name: service71
+    restart: on-failure
+    environment:
+      SERVICE_ID: '71'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8071:80
+  service72:
+    image: myorg/service72:latest
+    container_name: service72
+    restart: on-failure
+    environment:
+      SERVICE_ID: '72'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8072:80
+  service73:
+    image: myorg/service73:latest
+    container_name: service73
+    restart: on-failure
+    environment:
+      SERVICE_ID: '73'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8073:80
+  service74:
+    image: myorg/service74:latest
+    container_name: service74
+    restart: on-failure
+    environment:
+      SERVICE_ID: '74'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8074:80
+  service75:
+    image: myorg/service75:latest
+    container_name: service75
+    restart: on-failure
+    environment:
+      SERVICE_ID: '75'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8075:80
+  service76:
+    image: myorg/service76:latest
+    container_name: service76
+    restart: on-failure
+    environment:
+      SERVICE_ID: '76'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8076:80
+  service77:
+    image: myorg/service77:latest
+    container_name: service77
+    restart: on-failure
+    environment:
+      SERVICE_ID: '77'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8077:80
+  service78:
+    image: myorg/service78:latest
+    container_name: service78
+    restart: on-failure
+    environment:
+      SERVICE_ID: '78'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8078:80
+  service79:
+    image: myorg/service79:latest
+    container_name: service79
+    restart: on-failure
+    environment:
+      SERVICE_ID: '79'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8079:80
+  service80:
+    image: myorg/service80:latest
+    container_name: service80
+    restart: on-failure
+    environment:
+      SERVICE_ID: '80'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8080:80
+  service81:
+    image: myorg/service81:latest
+    container_name: service81
+    restart: on-failure
+    environment:
+      SERVICE_ID: '81'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8081:80
+  service82:
+    image: myorg/service82:latest
+    container_name: service82
+    restart: on-failure
+    environment:
+      SERVICE_ID: '82'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8082:80
+  service83:
+    image: myorg/service83:latest
+    container_name: service83
+    restart: on-failure
+    environment:
+      SERVICE_ID: '83'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8083:80
+  service84:
+    image: myorg/service84:latest
+    container_name: service84
+    restart: on-failure
+    environment:
+      SERVICE_ID: '84'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8084:80
+  service85:
+    image: myorg/service85:latest
+    container_name: service85
+    restart: on-failure
+    environment:
+      SERVICE_ID: '85'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8085:80
+  service86:
+    image: myorg/service86:latest
+    container_name: service86
+    restart: on-failure
+    environment:
+      SERVICE_ID: '86'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8086:80
+  service87:
+    image: myorg/service87:latest
+    container_name: service87
+    restart: on-failure
+    environment:
+      SERVICE_ID: '87'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8087:80
+  service88:
+    image: myorg/service88:latest
+    container_name: service88
+    restart: on-failure
+    environment:
+      SERVICE_ID: '88'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8088:80
+  service89:
+    image: myorg/service89:latest
+    container_name: service89
+    restart: on-failure
+    environment:
+      SERVICE_ID: '89'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8089:80
+  service90:
+    image: myorg/service90:latest
+    container_name: service90
+    restart: on-failure
+    environment:
+      SERVICE_ID: '90'
+      LOG_LEVEL: debug
+    depends_on:
+    - postgres
+    - redis
+    ports:
+    - 8090:80
+volumes:
+  pgdata: null
+  mysqldata: null
+  qdrantdata: null
