@@ -10,7 +10,7 @@ This is particularly useful for querying complex configuration files, data dumps
 
 You can click the image below to watch the demo:
 
-[![Watch the video](./assets/YamlQL.png)](https://www.youtube.com/watch?v=6MRYTz027Fc)
+[![Watch the video](./assets/YamlQL-Short.gif)](https://www.youtube.com/watch?v=6MRYTz027Fc)
 
 ## Use Cases
 
