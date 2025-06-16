@@ -8,6 +8,7 @@ YamlQL is a command-line tool and Python library that allows you to query YAML f
 
 This is particularly useful for querying complex configuration files, data dumps, or for use in RAG (Retrieval Augmented Generation) systems where you need to precisely extract information from structured YAML content.
 
+![YamlQL](./assets/YamlQL-Short.mp4)
 
 ## Use Cases
 
@@ -288,6 +289,29 @@ If you have any questions or feedback, please feel free to contact me in LinkedI
 ## If you like this project, Please ⭐⭐⭐⭐⭐ it on GitHub!
 
 https://github.com/AKSarav/YamlQL
+
+## Why Use YamlQL Instead of jq/yq?
+
+YamlQL offers several advantages over tools like `jq` and `yq`, particularly for users who need advanced querying capabilities:
+
+1. **SQL Querying:**
+   - YamlQL allows you to query YAML files using SQL, a powerful and widely-used query language. This is beneficial for users familiar with SQL who want to leverage its capabilities for querying structured data.
+   - jq/yq are designed for JSON/YAML processing using their own query languages, which might require learning new syntax.
+
+2. **Relational Schema:**
+   - YamlQL converts YAML structures into a relational schema, allowing for complex queries, including `JOIN` operations, which are not natively supported by jq or yq.
+   - This is particularly useful for querying complex configuration files, data dumps, or for use in RAG (Retrieval Augmented Generation) systems.
+
+3. **In-Memory Database:**
+   - YamlQL uses DuckDB to load data into an in-memory database, enabling fast and efficient querying of large datasets.
+
+4. **Natural Language Processing:**
+   - YamlQL supports natural language queries, allowing users to ask questions in plain English and get SQL queries generated automatically. This feature is not available in jq or yq.
+
+5. **Use Cases:**
+   - YamlQL is ideal for scenarios where you need to understand the schema of a YAML file, the relationships between data, or when integrating with systems that require SQL-like querying capabilities.
+
+While jq and yq are excellent tools for simple data extraction and transformation tasks, YamlQL offers advanced querying capabilities and a SQL interface that can be more suitable for complex data analysis and integration tasks.
 
 
 
