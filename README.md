@@ -8,7 +8,9 @@ YamlQL is a command-line tool and Python library that allows you to query YAML f
 
 This is particularly useful for querying complex configuration files, data dumps, or for use in RAG (Retrieval Augmented Generation) systems where you need to precisely extract information from structured YAML content.
 
-[![Watch the video](https://img.youtube.com/vi/6MRYTz027Fc/maxresdefault.jpg)](https://www.youtube.com/watch?v=6MRYTz027Fc)
+You can click the image below to watch the demo:
+
+[![Watch the video](./assets/YamlQL.png)](https://www.youtube.com/watch?v=6MRYTz027Fc)
 
 ## Use Cases
 
