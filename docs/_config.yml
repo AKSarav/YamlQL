@@ -7,6 +7,20 @@ markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
+  hard_wrap: false
+  syntax_highlighter_opts:
+    css_class: highlight
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+      start_line: 1
+
+# Liquid settings
+liquid:
+  error_mode: strict
+  strict_filters: true
+  strict_variables: false
 
 # Exclude files from processing
 exclude:
@@ -14,12 +28,16 @@ exclude:
   - Gemfile.lock
   - node_modules
   - vendor
+  - README.md
 
 # Enable plugins
 plugins:
   - jekyll-relative-links
   - jekyll-readme-index
   - jekyll-titles-from-headings
+  - jekyll-optional-front-matter
+  - jekyll-default-layout
+  - jekyll-seo-tag
 
 # Default settings
 defaults:
@@ -27,4 +45,9 @@ defaults:
     scope:
       path: "" # All files
     values:
-      layout: default 
+      layout: default
+
+# Site settings
+repository: AKSarav/YamlQL
+baseurl: ""
+url: "https://aksarav.github.io" 
