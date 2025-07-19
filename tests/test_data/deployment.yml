@@ -1,26 +1,88 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: complex-app
+  labels:
+    app: complex-app
+    tier: backend
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: nginx
+      app: complex-app
   template:
     metadata:
       labels:
-        app: nginx
+        app: complex-app
+        version: v1
     spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: app-config
+        - name: secret-volume
+          secret:
+            secretName: app-secrets
+        - name: shared-logs
+          emptyDir: {}
       containers:
-      - name: nginx
-        image: nginx:latest
-        ports:
-        - containerPort: 80
-        resources:
-          limits:
-            memory: "256Mi"  # Maximum memory allowed
-            cpu: "200m"       # Maximum CPU allowed (200 milliCPU)
-          requests:
-            memory: "128Mi"  # Initial memory request
-            cpu: "100m"       # Initial CPU request
+        - name: main-app
+          image: myorg/main-app:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_ENV
+              value: production
+            - name: CONFIG_PATH
+              value: /etc/config
+            - name: SECRET_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: token
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+            - name: shared-logs
+              mountPath: /var/log/app
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+        - name: sidecar-logger
+          image: fluent/fluentd:latest
+          ports:
+            - containerPort: 24224
+          volumeMounts:
+            - name: shared-logs
+              mountPath: /fluentd/log
+          env:
+            - name: FLUENTD_CONF
+              value: fluentd.conf
+        - name: metrics-exporter
+          image: prom/node-exporter
+          ports:
+            - containerPort: 9090
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "128Mi"

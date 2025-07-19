@@ -1,0 +1,67 @@
+site_name: YamlQL Documentation
+site_description: Documentation for YamlQL - Query YAML files with SQL
+repo_url: https://github.com/AKSarav/YamlQL
+repo_name: AKSarav/YamlQL
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quick-start.md
+    - Configuration: getting-started/configuration.md
+  - Commands:
+    - SQL Query: commands/sql.md
+    - Discover: commands/discover.md
+    - AI Query: commands/ai.md
+  - Concepts:
+    - Schema Transformation: concepts/schema-transformation.md
+    - Metadata Tables: concepts/metadata-tables.md
+    - Relationships: concepts/relationships.md
+  - Guides:
+    - Kubernetes Files: guides/kubernetes.md
+    - Docker Compose: guides/docker-compose.md
+    - Complex YAML: guides/complex-yaml.md
+  - API Reference:
+    - YamlQL Class: api/yamlql.md
+    - Transformer: api/transformer.md
+    - Database: api/database.md
+  - Troubleshooting: troubleshooting.md 
