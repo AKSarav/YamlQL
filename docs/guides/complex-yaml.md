@@ -377,7 +377,7 @@ SELECT
         WHEN TYPEOF(value) = 'boolean' THEN 'boolean'
         WHEN TYPEOF(value) = 'bigint' THEN 'number'
         WHEN value LIKE '[%]' THEN 'array'
-        WHEN value LIKE '{%}' THEN 'object'
+        WHEN value LIKE '{ %}' THEN 'object'
     END as value_type,
     value
 FROM values;
