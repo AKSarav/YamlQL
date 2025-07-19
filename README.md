@@ -279,7 +279,7 @@ This project was inspired by the need to query YAML files in a more structured w
 
 ## Contact
 
-If you have any questions or feedback, please feel free to contact me in LinkedIn [@joshuajohnson](https://www.linkedin.com/in/aksarav/).
+If you have any questions or feedback, please feel free to contact me in LinkedIn [@aksarav](https://www.linkedin.com/in/aksarav/).
 
 ## TODO
 
@@ -316,4 +316,46 @@ YamlQL offers several advantages over tools like `jq` and `yq`, particularly for
 While jq and yq are excellent tools for simple data extraction and transformation tasks, YamlQL offers advanced querying capabilities and a SQL interface that can be more suitable for complex data analysis and integration tasks.
 
 
+## Contributors
 
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <a href="https://github.com/aksarav">
+          <img src="https://github.com/aksarav.png" width="100px;" alt="@aksarav" style="border-radius:50%"/>
+          <br />
+          <sub><b>@aksarav</b></sub>
+        </a>
+      </td>
+      <td align="center">
+        <a href="https://github.com/jithish-sekar">
+          <img src="https://github.com/jithish-sekar.png" width="100px;" alt="@Jithish" style="border-radius:50%"/>
+          <br />
+          <sub><b>@Jithish</b></sub>
+        </a>
+      </td>
+      <td align="center">
+        <a href="https://github.com/KumarSanthosh16">
+          <img src="https://github.com/KumarSanthosh16.png" width="100px;" alt="@Santhosh" style="border-radius:50%"/>
+          <br />
+          <sub><b>@Santhosh</b></sub>
+        </a>
+      </td>
+      <td align="center">
+        <a href="https://github.com/aakj2010">
+          <img src="https://github.com/aakj2010.png" width="100px;" alt="@AK" style="border-radius:50%"/>
+          <br />
+          <sub><b>@AK</b></sub>
+        </a>
+      </td>
+      <td align="center">
+        <a href="https://github.com/Prabha-46">
+          <img src="https://github.com/Prabha-46.png" width="100px;" alt="@Prabha" style="border-radius:50%"/>
+          <br />
+          <sub><b>@Prabha</b></sub>
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
