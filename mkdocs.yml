@@ -9,8 +9,12 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.expand
+    - navigation.top
     - search.suggest
     - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
   palette:
     - scheme: default
       primary: indigo
@@ -24,10 +28,17 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  icon:
+    repo: fontawesome/brands/github
 
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
@@ -38,6 +49,18 @@ markdown_extensions:
   - tables
   - def_list
   - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/AKSarav/YamlQL
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
 
 nav:
   - Home: index.md
@@ -66,4 +89,6 @@ nav:
 plugins:
   - search
   - minify:
-      minify_html: true 
+      minify_html: true
+  - social
+  - tags 

@@ -1,6 +1,6 @@
-# YamlQL Documentation
+# YamlQL
 
-YamlQL is a powerful command-line tool and Python library that allows you to query YAML files using SQL. It intelligently converts YAML structures into a relational schema, loads the data into a DuckDB database, and lets you run SQL queries against it.
+YamlQL is a powerful command-line tool and Python library that allows you to query YAML files using SQL. It intelligently converts YAML structures into a relational schema, loads it into an in-memory database, and lets you run SQL queries against it.
 
 ## Key Features
 
@@ -36,26 +36,20 @@ yamlql sql -f docker-compose.yml "SELECT name, image FROM services"
 yamlql ai -f docker-compose.yml "What services use the postgres image?"
 ```
 
-## Why YamlQL?
-
-YamlQL offers several advantages over traditional YAML/JSON processing tools:
-
-1. **SQL Power**: Leverage the full power of SQL for complex queries
-2. **Relational Model**: Automatic conversion of nested structures into relational tables
-3. **Intelligent Schema**: Smart handling of arrays, nested objects, and relationships
-4. **AI Integration**: Natural language querying with multiple LLM providers
-5. **Developer Friendly**: Both CLI and Python library interfaces
-
 ## Getting Started
 
+Check out our [Quick Start Guide](getting-started/quick-start.md) to begin using YamlQL, or dive into specific topics:
+
 - [Installation Guide](getting-started/installation.md)
-- [Quick Start Tutorial](getting-started/quick-start.md)
-- [Configuration Guide](getting-started/configuration.md)
+- [SQL Query Command](commands/sql.md)
+- [AI Query Command](commands/ai.md)
+- [Schema Discovery](commands/discover.md)
 
-## Contributing
+## Documentation Structure
 
-Contributions are welcome! Please feel free to submit a pull request on our [GitHub repository](https://github.com/AKSarav/YamlQL).
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](https://github.com/AKSarav/YamlQL/blob/main/LICENSE) file for details. 
+- **Getting Started**: Installation, quick start, and configuration guides
+- **Commands**: Detailed documentation for each YamlQL command
+- **Concepts**: Understanding YamlQL's core concepts
+- **Guides**: Practical guides for common use cases
+- **API Reference**: Complete Python API documentation
+- **Troubleshooting**: Common issues and solutions 
