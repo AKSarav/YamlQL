@@ -1,19 +1,16 @@
-site_name: YamlQL Documentation
-site_description: Documentation for YamlQL - Query YAML files with SQL
+site_name: YamlQL
+site_description: Query YAML files using SQL
 repo_url: https://github.com/AKSarav/YamlQL
 repo_name: AKSarav/YamlQL
 
 theme:
   name: material
   features:
-    - navigation.instant
-    - navigation.tracking
+    - navigation.tabs
     - navigation.sections
     - navigation.expand
-    - navigation.top
-    - search.highlight
-    - search.share
     - search.suggest
+    - search.highlight
   palette:
     - scheme: default
       primary: indigo
@@ -29,18 +26,18 @@ theme:
         name: Switch to light mode
 
 markdown_extensions:
-  - admonition
-  - pymdownx.details
-  - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
   - tables
-  - toc:
-      permalink: true
+  - def_list
+  - attr_list
 
 nav:
   - Home: index.md
@@ -51,7 +48,7 @@ nav:
   - Commands:
     - SQL Query: commands/sql.md
     - Discover: commands/discover.md
-    - AI Query: commands/ai.md
+    - AI: commands/ai.md
   - Concepts:
     - Schema Transformation: concepts/schema-transformation.md
     - Metadata Tables: concepts/metadata-tables.md
@@ -62,6 +59,11 @@ nav:
     - Complex YAML: guides/complex-yaml.md
   - API Reference:
     - YamlQL Class: api/yamlql.md
-    - Transformer: api/transformer.md
-    - Database: api/database.md
-  - Troubleshooting: troubleshooting.md 
+    - Transformer Class: api/transformer.md
+    - Database Class: api/database.md
+  - Troubleshooting: troubleshooting.md
+
+plugins:
+  - search
+  - minify:
+      minify_html: true 
