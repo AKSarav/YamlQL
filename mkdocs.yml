@@ -2,6 +2,7 @@ site_name: YamlQL
 site_description: Query YAML files using SQL
 repo_url: https://github.com/AKSarav/YamlQL
 repo_name: AKSarav/YamlQL
+site_dir: site
 
 theme:
   name: material
@@ -33,6 +34,9 @@ theme:
     code: Roboto Mono
   icon:
     repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - pymdownx.highlight:
