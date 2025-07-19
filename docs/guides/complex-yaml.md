@@ -149,16 +149,16 @@ WHERE cpu IS NOT NULL;
 deployment:
   name: app
   spec:
-    {{if .Values.monitoring}}
+    {% raw %}{{if .Values.monitoring}}{% endraw %}
     monitoring:
       enabled: true
       endpoint: /metrics
-    {{end}}
-    {{if .Values.ingress}}
+    {% raw %}{{end}}{% endraw %}
+    {% raw %}{{if .Values.ingress}}{% endraw %}
     ingress:
       enabled: true
       host: app.example.com
-    {{end}}
+    {% raw %}{{end}}{% endraw %}
 ```
 
 Handling Optional Sections:

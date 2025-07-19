@@ -1,0 +1,30 @@
+title: YamlQL
+description: Query YAML files using SQL
+theme: jekyll-theme-primer
+
+# GitHub Pages settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Exclude files from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+# Enable plugins
+plugins:
+  - jekyll-relative-links
+  - jekyll-readme-index
+  - jekyll-titles-from-headings
+
+# Default settings
+defaults:
+  -
+    scope:
+      path: "" # All files
+    values:
+      layout: default 
