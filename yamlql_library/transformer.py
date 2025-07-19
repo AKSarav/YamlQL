@@ -82,9 +82,14 @@ class DataTransformer:
             source_data = data_copy
 
         for table_name, value in source_data.items():
+            # Sanitize the table name to ensure it's a string. This handles
+            # YAML keys that are parsed as booleans (e.g., 'on') or numbers.
+            table_name = str(table_name)
+
             if isinstance(value, dict) and len(value) > 1:
                 # Create a separate table for each child if there are multiple children
                 for child_name, child_value in value.items():
+                    child_name = str(child_name)
                     if isinstance(child_value, dict) or isinstance(child_value, list):
                         tables.extend(self._normalize_records(f"{table_name}_{child_name}", [child_value]))
             elif isinstance(value, list) and value:

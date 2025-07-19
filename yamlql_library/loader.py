@@ -30,7 +30,14 @@ class YamlLoader:
 
         # Pre-process the content to handle common multi-document formatting issues
         # Replace '------' with '---' and ensure separators are on their own lines
+        # Wrap boolean-like keys (on, true, etc.) in quotes to preserve them as strings
         processed_content = re.sub(r'^\s*-{3,}\s*$', '---', content, flags=re.MULTILINE)
+        boolean_keys = ['y', 'Y', 'yes', 'Yes', 'YES', 'n', 'N', 'no', 'No', 'NO',
+                        'true', 'True', 'TRUE', 'false', 'False', 'FALSE',
+                        'on', 'On', 'ON', 'off', 'Off', 'OFF']
+        for key in boolean_keys:
+            # This regex finds keys at the start of a line and wraps them in quotes.
+            processed_content = re.sub(f'^{key}:', f'"{key}":', processed_content, flags=re.MULTILINE)
 
         # Use safe_load_all to handle multi-document YAML files
         documents = list(yaml.safe_load_all(processed_content))
