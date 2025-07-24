@@ -29,8 +29,6 @@ app = typer.Typer(
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
-    sql_query: str = typer.Argument(None, help="The SQL query to execute (optional, if not using subcommands)."),
-    file: str = typer.Option(None, "--file", "-f", help="Path to the YAML file to query."),
     execute: str = typer.Option(
         None,
         "--execute",
@@ -39,7 +37,7 @@ def main(
     ),
 ):
     """
-    Main callback to handle the --execute/-e flag for direct queries, or direct SQL query if no subcommand is given.
+    Main callback to handle the --execute/-e flag for direct queries.
     """
     # If a subcommand is being invoked (e.g., query, discover), do nothing.
     if ctx.invoked_subcommand is not None:
@@ -62,17 +60,6 @@ def main(
             rich.print("[bold red]Error:[/bold red] Invalid YAMLQL_MODE set. Use SQL or AI.", file=sys.stderr)
             raise typer.Exit(code=1)
         raise typer.Exit()
-
-    # If a SQL query and file are provided directly, run as SQL (default mode)
-    if sql_query and file:
-        cli_logic.run_query(sql_query, file, OutputFormat.AUTO)
-        raise typer.Exit()
-
-    # If only file is provided, show help (or could enter interactive mode)
-    if file and not sql_query:
-        rich.print("[bold yellow]No SQL query provided. Please provide a SQL query as a positional argument, e.g.:[/bold yellow]")
-        rich.print("  yamlql -f file.yaml 'SELECT * FROM table'")
-        raise typer.Exit(code=1)
 
     # If nothing is provided, show help
     typer.echo(ctx.get_help())
