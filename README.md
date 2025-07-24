@@ -39,7 +39,12 @@ pip install yamlql
 
 #### Querying Data
 
-To run a SQL query against a YAML file:
+To run a SQL query against a YAML file (new default, recommended):
+```bash
+yamlql -f path/to/your.yml "SELECT column_a, column_b FROM my_table"
+```
+
+You can also use the explicit `sql` subcommand (legacy style, still supported):
 ```bash
 yamlql sql --file path/to/your.yml "SELECT column_a, column_b FROM my_table"
 ```
@@ -48,7 +53,7 @@ yamlql sql --file path/to/your.yml "SELECT column_a, column_b FROM my_table"
 
 For wide tables or complex data, the `list` output format is often more readable.
 ```bash
-yamlql sql --file path/to/your.yml "SELECT * FROM my_table" --output list
+yamlql -f path/to/your.yml "SELECT * FROM my_table" --output list
 ```
 
 #### Discovering the Schema

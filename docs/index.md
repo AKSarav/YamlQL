@@ -29,7 +29,10 @@ pip install yamlql
 # Discover the schema of a YAML file
 yamlql discover -f docker-compose.yml
 
-# Run a SQL query
+# Run a SQL query (new default, recommended)
+yamlql -f docker-compose.yml "SELECT name, image FROM services"
+
+# (Alternatively, you can use the explicit subcommand)
 yamlql sql -f docker-compose.yml "SELECT name, image FROM services"
 
 # Ask a question in natural language

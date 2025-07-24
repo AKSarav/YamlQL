@@ -1,10 +1,21 @@
 # SQL Query Command
 
+> **New in vX.X.X:** You can now run SQL queries directly with:
+> ```bash
+> yamlql -f file.yml "SELECT * FROM table_name"
+> ```
+> The `sql` subcommand is still available for compatibility:
+> ```bash
+> yamlql sql -f file.yml "SELECT * FROM table_name"
+> ```
+
 The `sql` command is the core feature of YamlQL, allowing you to query YAML files using standard SQL syntax.
 
 ## Basic Usage
 
 ```bash
+yamlql -f file.yml "SELECT * FROM table_name"
+# (or, equivalently)
 yamlql sql -f file.yml "SELECT * FROM table_name"
 ```
 

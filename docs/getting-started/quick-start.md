@@ -23,14 +23,17 @@ This will show:
 Once you know the schema, you can run SQL queries:
 
 ```bash
-# Simple SELECT
-yamlql sql -f docker-compose.yml "SELECT * FROM services"
+# Simple SELECT (new default, recommended)
+yamlql -f docker-compose.yml "SELECT * FROM services"
 
 # Filtering
-yamlql sql -f docker-compose.yml "SELECT name, image FROM services WHERE image LIKE '%postgres%'"
+yamlql -f docker-compose.yml "SELECT name, image FROM services WHERE image LIKE '%postgres%'"
 
 # Using list output for better readability
-yamlql sql -f docker-compose.yml "SELECT * FROM services" --output list
+yamlql -f docker-compose.yml "SELECT * FROM services" --output list
+
+# (Alternatively, you can use the explicit subcommand)
+yamlql sql -f docker-compose.yml "SELECT * FROM services"
 ```
 
 ### 3. Using AI Queries
