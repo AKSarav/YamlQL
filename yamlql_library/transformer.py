@@ -43,6 +43,10 @@ class DataTransformer:
                 meta_prefix=f"{table_name}_"
             )
             child_df.columns = [c.replace(' ', '_').replace('.', '_') for c in child_df.columns]
+            # Coerce all non-numeric columns to string to avoid type mismatches
+            for col in child_df.columns:
+                if not pd.api.types.is_numeric_dtype(child_df[col]):
+                    child_df[col] = child_df[col].astype(str)
             tables.append((nested_table_name, child_df))
 
         # Create the parent table by flattening everything first...
@@ -60,6 +64,10 @@ class DataTransformer:
         
         # Only add the parent table if it's not empty after the nested lists were removed.
         if not parent_df.empty and parent_df.shape[1] > 0:
+            # Coerce all non-numeric columns to string to avoid type mismatches
+            for col in parent_df.columns:
+                if not pd.api.types.is_numeric_dtype(parent_df[col]):
+                    parent_df[col] = parent_df[col].astype(str)
             tables.append((table_name, parent_df))
         
         return tables
@@ -100,6 +108,10 @@ class DataTransformer:
                     # It's a list of simple scalars, create a single-column DataFrame
                     df = pd.DataFrame({table_name: value})
                     df.columns = [c.replace(' ', '_').replace('.', '_') for c in df.columns]
+                    # Coerce all non-numeric columns to string to avoid type mismatches
+                    for col in df.columns:
+                        if not pd.api.types.is_numeric_dtype(df[col]):
+                            df[col] = df[col].astype(str)
                     tables.append((table_name, df))
                 # Otherwise, it's a mixed or unsupported list type, so we ignore it.
             elif isinstance(value, dict):
