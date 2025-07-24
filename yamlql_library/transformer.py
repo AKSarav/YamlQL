@@ -59,7 +59,7 @@ class DataTransformer:
                 errors='ignore',
                 meta_prefix=f"{table_name}_"
             )
-            child_df.columns = [c.replace(' ', '_').replace('.', '_') for c in child_df.columns]
+            child_df.columns = [c.replace(' ', '_').replace('.', '_').replace('-', '_') for c in child_df.columns]
             # Coerce all non-numeric columns to string to avoid type mismatches, but preserve lists for DuckDB array support
             for col in child_df.columns:
                 if not pd.api.types.is_numeric_dtype(child_df[col]):
@@ -70,7 +70,7 @@ class DataTransformer:
 
         # Create the parent table by flattening everything first...
         parent_df = pd.json_normalize(processed_records, sep='_')
-        parent_df.columns = [c.replace(' ', '_').replace('.', '_') for c in parent_df.columns]
+        parent_df.columns = [c.replace(' ', '_').replace('.', '_').replace('-', '_') for c in parent_df.columns]
         
         # ...then dropping the columns that were extracted into separate tables.
         cols_to_drop = []
@@ -101,6 +101,21 @@ class DataTransformer:
         tables = []
         data_copy = copy.deepcopy(self.data)
 
+        # Handle the case where the YAML root is a list
+        if isinstance(data_copy, list):
+            if all(isinstance(item, dict) for item in data_copy):
+                # It's a list of objects, treat it as a single table named 'root'
+                return self._normalize_records('root', data_copy)
+            elif all(not isinstance(item, (dict, list)) for item in data_copy):
+                # It's a list of simple scalars, create a single-column DataFrame
+                value_as_str = [str(x) for x in data_copy]
+                df = pd.DataFrame({'value': value_as_str})
+                tables.append(('root', df))
+                return tables
+            else:
+                # It's a mixed or unsupported list, return no tables
+                return []
+
         # Heuristic: If there are fewer than three top-level keys,
         # assume the user wants to treat the keys of the inner dict as tables.
         top_level_keys = list(data_copy.keys())
@@ -112,14 +127,20 @@ class DataTransformer:
         for table_name, value in source_data.items():
             # Sanitize the table name to ensure it's a string. This handles
             # YAML keys that are parsed as booleans (e.g., 'on') or numbers.
-            table_name = str(table_name)
+            table_name = str(table_name).replace('-', '_')
 
             if isinstance(value, dict) and len(value) > 1:
                 # Create a separate table for each child if there are multiple children
                 for child_name, child_value in value.items():
-                    child_name = str(child_name)
+                    child_name = str(child_name).replace('-', '_')
                     if isinstance(child_value, dict) or isinstance(child_value, list):
-                        tables.extend(self._normalize_records(f"{table_name}_{child_name}", [child_value]))
+                        # If the child value is a list of scalars, handle it directly
+                        if isinstance(child_value, list) and all(not isinstance(item, (dict, list)) for item in child_value):
+                            value_as_str = [str(x) for x in child_value]
+                            df = pd.DataFrame({'value': value_as_str})
+                            tables.append((f"{table_name}_{child_name}", df))
+                        else:
+                            tables.extend(self._normalize_records(f"{table_name}_{child_name}", [child_value]))
             elif isinstance(value, list) and value:
                 # Check if it's a list of objects or a list of scalars
                 if all(isinstance(item, dict) for item in value):
@@ -130,7 +151,7 @@ class DataTransformer:
                     # by the logic below, but we can keep the explicit conversion for clarity.
                     value_as_str = [str(x) for x in value]
                     df = pd.DataFrame({table_name: value_as_str})
-                    df.columns = [c.replace(' ', '_').replace('.', '_') for c in df.columns]
+                    df.columns = [c.replace(' ', '_').replace('.', '_').replace('-', '_') for c in df.columns]
                     # This post-coercion is now less critical but safe to keep.
                     for col in df.columns:
                         if not pd.api.types.is_numeric_dtype(df[col]):

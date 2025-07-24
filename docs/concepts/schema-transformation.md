@@ -11,24 +11,28 @@ YamlQL transforms YAML files into a relational database schema that can be queri
 
 ## Transformation Rules
 
-### 1. Root Level Values
+### 1. Root-Level Structures
 
+#### Dictionary Root
+If the YAML root is a dictionary (the most common case), its top-level keys are treated as tables.
 ```yaml
 # Input YAML
 version: '3.8'
-name: my-app
-environment: production
+services:
+  ...
 ```
+This would result in tables like `services`.
 
-Becomes:
-```sql
--- root table
-CREATE TABLE root (
-    version VARCHAR,
-    name VARCHAR,
-    environment VARCHAR
-);
+#### List Root
+If the YAML root is a list of objects, it is treated as a single table named `root`.
+```yaml
+# Input YAML
+- name: service-a
+  image: nginx
+- name: service-b
+  image: apache
 ```
+This creates a `root` table with columns `name` and `image`.
 
 ### 2. Nested Objects
 
@@ -87,6 +91,8 @@ CREATE TABLE tags (
 );
 ```
 For a list inside an object, it becomes a `VARCHAR[]` column in that object's table. You can then use DuckDB's powerful array functions on it.
+
+However, if a list of scalars is found under a key that is part of a larger object structure being flattened, a new table is created instead. For a key `rds-mysql` inside an `amazon-rds` object, this creates a new table `amazon_rds_rds_mysql`.
 
 ### 4. Arrays of Objects
 
@@ -218,8 +224,8 @@ CREATE TABLE volumes (
 2. **Column Names**:
    - Simple fields: Field name (e.g., `name`)
    - Nested fields: Parent_Child (e.g., `resources_limits_cpu`)
-   - Special characters replaced with underscore
-   - Case preserved
+   - **Special Character Sanitization**: Any characters that are not valid in unquoted SQL identifiers (like spaces, periods, and hyphens) are replaced with underscores. For example, a YAML key `service-name` becomes the column `service_name`.
+   - Case is preserved.
 
 3. **Special Columns**:
    - `_id`: Primary key for child tables

@@ -183,7 +183,7 @@ This helps you understand:
 
 - Nested fields use underscores: `database_host`
 - Array indices are preserved: `ports_0`, `ports_1`
-- Special characters are escaped
+- **Special characters are sanitized**: Hyphens, spaces, and periods in YAML keys are replaced with underscores (`_`). For example, `service-name` becomes `service_name`.
 - Case sensitivity is preserved
 
 ### 3. Working with Arrays

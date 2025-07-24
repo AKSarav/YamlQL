@@ -133,17 +133,16 @@ print(results)
 YamlQL transforms YAML files into a queryable, relational database on the fly. It follows a set of rules to create an intuitive schema from your YAML structure.
 
 1.  **Table Discovery**:
-    *   If your YAML file has multiple root keys, each key is treated as a potential table.
-    *   If a key has multiple children, a separate table is created for each child.
-    *   This approach ensures that deeply nested structures are appropriately flattened into relational tables.
+    *   **Root-level Dictionary**: If your YAML file's root is a dictionary, each key is treated as a potential table. If a key has multiple children, a separate table is created for each child. This approach ensures that deeply nested structures are appropriately flattened.
+    *   **Root-level List**: If your YAML file's root is a list of objects, it is treated as a single table named `root`.
 
 2.  **Transformation Rules**:
     *   **Dictionaries / Objects**: A YAML object will be flattened into a single-row table. Nested keys are combined with an underscore (`_`). For example, `owner.contact.email` becomes a column named `owner_contact_email`.
     *   **Lists of Objects**: A list of objects (e.g., a list of `users`) becomes a standard, multi-row table.
     *   **Deeply Nested Lists of Objects**: When a list of objects is found nested inside another object (e.g., a list of `containers` inside a `spec`), YamlQL automatically extracts it into its own separate table (e.g., `spec_template_spec_containers`). It also copies parent fields into this new table to allow for `JOIN` operations.
-    *   **Lists of Simple Values**: A list of simple values (e.g., strings, numbers, or booleans) is converted into a native DuckDB `LIST` type. To ensure type safety, especially for lists with mixed types like `[True, 'A', 123]`, all elements are converted to strings. This results in a `VARCHAR[]` column, which you can query using DuckDB's powerful array functions.
+    *   **Lists of Simple Values**: A list of simple values (e.g., strings, numbers, or booleans) found under a key will be converted into a new, single-column table named after its parent keys (e.g., a list under `rds-mysql` inside `amazon-rds` would create a table named `amazon_rds_rds_mysql`). To ensure type safety, especially for lists with mixed types like `[True, 'A', 123]`, all elements are converted to strings. This results in a `VARCHAR[]` column, which you can query using DuckDB's powerful array functions.
 
-3.  **Sanitization**: All generated column names are sanitized to be SQL-friendly. Special characters like spaces or periods in YAML keys are replaced with underscores.
+3.  **Sanitization**: All generated table and column names are sanitized to be SQL-friendly. Special characters like spaces, periods, and hyphens in YAML keys are replaced with underscores (`_`). For example, a key named `amazon-rds` becomes a table or column named `amazon_rds`.
 
 4.  **Discovery**: Because the transformation is complex, the `discover` command is provided to inspect the final schema. It lists all the tables YamlQL has created from your file, along with all of their columns and data types, removing any guesswork.
 
@@ -168,30 +167,35 @@ Building YamlQL was an iterative process that involved solving several real-worl
 
 Here are a few examples to show how YamlQL can be used in different scenarios.
 
-### Example 1: Working with Lists (Arrays)
+### Example 1: Working with Lists and Sanitized Keys
 
-YamlQL can natively handle lists of simple values, including mixed-type lists. All list elements are converted to strings for type safety.
+YamlQL can handle complex YAML, including keys with hyphens and nested lists of simple values.
 
-Given a `config.yml`:
+Given a `service-catalog.yml`:
 ```yaml
-# config.yml
-settings:
-  - name: feature_flags
-    enabled: True
-    options: [True, 'A', 123]
-  - name: approved_regions
-    enabled: False
-    options: ['us-east-1', 'eu-west-2']
+# service-catalog.yml
+service:
+  amazon-rds:
+    rds-mysql:
+      - single-az-instance
+      - multi-az-with-standby
+  aws-lambda:
+    standalone-lambda:
+      - standalone-lambda
 ```
 
-You can use DuckDB's array functions to query the `options` list:
+YamlQL automatically sanitizes the hyphenated keys and creates separate tables for the nested lists:
 
 ```bash
-# Get the first element of each options list
-yamlql sql -f config.yml "SELECT name, options[1] AS first_option FROM settings"
+# Discover the schema to see the new tables
+yamlql discover -f service-catalog.yml
+```
 
-# Unnest the options list to get one row per option
-yamlql sql -f config.yml "SELECT name, UNNEST(options) AS option FROM settings"
+The output will show tables like `service_amazon_rds_rds_mysql` and `service_aws_lambda_standalone_lambda`. You can then query them:
+
+```bash
+# Query the options for rds-mysql
+yamlql sql -f service-catalog.yml "SELECT * FROM service_amazon_rds_rds_mysql"
 ```
 
 ### Example 2: Basic Joins
