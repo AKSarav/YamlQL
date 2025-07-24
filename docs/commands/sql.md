@@ -25,6 +25,39 @@ yamlql sql -f file.yml "SELECT * FROM table_name"
 |--------|-------------|---------|
 | `--file`, `-f` | YAML file to query | Required |
 | `--output`, `-o` | Output format (`auto`, `table`, `list`) | `auto` |
+| `--sql-file` | Path to a file containing the SQL query. If provided, overrides the positional SQL query. | None |
+
+## Native List/Array Support
+
+YamlQL now stores YAML lists of scalars as DuckDB arrays (native LIST type). To ensure type safety and prevent errors, **all elements in these lists are converted to strings (VARCHAR)**. This allows you to reliably query lists with mixed types.
+
+For example, given this YAML:
+```yaml
+mixed_list_options:
+  - True
+  - "Option A"
+  - 123
+```
+The data will be stored as `['True', 'Option A', '123']`. You can then use DuckDB's array functions:
+
+```sql
+-- Safely access any element by index (it will be a string)
+SELECT mixed_list_options[1] FROM my_table;
+
+-- Unnest the array into individual rows
+SELECT UNNEST(mixed_list_options) AS option FROM my_table;
+
+-- Get the length of the array
+SELECT ARRAY_LENGTH(mixed_list_options) FROM my_table;
+```
+
+## Running SQL from a File
+
+For complex queries or to avoid shell quoting issues, use the `--sql-file` option:
+
+```bash
+yamlql sql -f file.yml --sql-file myquery.sql
+```
 
 ## Query Examples
 

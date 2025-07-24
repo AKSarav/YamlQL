@@ -78,12 +78,15 @@ tags:
   - v1
 ```
 
-Becomes:
+If a list contains only simple scalar values (strings, numbers, booleans), it will be loaded as a native DuckDB `LIST` type. To ensure type safety and prevent errors from mixed-type lists (e.g., `[True, 'A', 123]`), **all elements are automatically converted to strings (VARCHAR)**.
+
+This creates a column of type `VARCHAR[]` (a list of strings). For a top-level list like the `tags` example, it creates a single-column table:
 ```sql
 CREATE TABLE tags (
-    value VARCHAR  -- Each array item becomes a row
+    value VARCHAR[]
 );
 ```
+For a list inside an object, it becomes a `VARCHAR[]` column in that object's table. You can then use DuckDB's powerful array functions on it.
 
 ### 4. Arrays of Objects
 

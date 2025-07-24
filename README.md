@@ -39,9 +39,11 @@ pip install yamlql
 
 #### Querying Data
 
-To run a SQL query against a YAML file (new default, recommended):
+To run a SQL query against a YAML file:
 ```bash
-yamlql -f path/to/your.yml "SELECT column_a, column_b FROM my_table"
+yamlql sql --file path/to/your.yml SELECT column_a, column_b FROM my_table
+# Or, for complex queries, use a SQL file:
+yamlql sql --file path/to/your.yml --sql-file myquery.sql
 ```
 
 You can also use the explicit `sql` subcommand (legacy style, still supported):
@@ -139,7 +141,7 @@ YamlQL transforms YAML files into a queryable, relational database on the fly. I
     *   **Dictionaries / Objects**: A YAML object will be flattened into a single-row table. Nested keys are combined with an underscore (`_`). For example, `owner.contact.email` becomes a column named `owner_contact_email`.
     *   **Lists of Objects**: A list of objects (e.g., a list of `users`) becomes a standard, multi-row table.
     *   **Deeply Nested Lists of Objects**: When a list of objects is found nested inside another object (e.g., a list of `containers` inside a `spec`), YamlQL automatically extracts it into its own separate table (e.g., `spec_template_spec_containers`). It also copies parent fields into this new table to allow for `JOIN` operations.
-    *   **Lists of Simple Values**: A list of simple values (e.g., strings or numbers) is converted into a single-column table.
+    *   **Lists of Simple Values**: A list of simple values (e.g., strings, numbers, or booleans) is converted into a native DuckDB `LIST` type. To ensure type safety, especially for lists with mixed types like `[True, 'A', 123]`, all elements are converted to strings. This results in a `VARCHAR[]` column, which you can query using DuckDB's powerful array functions.
 
 3.  **Sanitization**: All generated column names are sanitized to be SQL-friendly. Special characters like spaces or periods in YAML keys are replaced with underscores.
 
@@ -166,7 +168,33 @@ Building YamlQL was an iterative process that involved solving several real-worl
 
 Here are a few examples to show how YamlQL can be used in different scenarios.
 
-### Example 1: Basic Joins
+### Example 1: Working with Lists (Arrays)
+
+YamlQL can natively handle lists of simple values, including mixed-type lists. All list elements are converted to strings for type safety.
+
+Given a `config.yml`:
+```yaml
+# config.yml
+settings:
+  - name: feature_flags
+    enabled: True
+    options: [True, 'A', 123]
+  - name: approved_regions
+    enabled: False
+    options: ['us-east-1', 'eu-west-2']
+```
+
+You can use DuckDB's array functions to query the `options` list:
+
+```bash
+# Get the first element of each options list
+yamlql sql -f config.yml "SELECT name, options[1] AS first_option FROM settings"
+
+# Unnest the options list to get one row per option
+yamlql sql -f config.yml "SELECT name, UNNEST(options) AS option FROM settings"
+```
+
+### Example 2: Basic Joins
 
 Given a simple `data.yml` with users and posts:
 
@@ -192,7 +220,7 @@ yamlql sql --file data.yml "SELECT u.name, p.title FROM users u JOIN posts p ON 
 ```
 *This query will return the name "John Doe" with "First Post" and "Second Post".*
 
-### Example 2: Querying a Kubernetes Manifest
+### Example 3: Querying a Kubernetes Manifest
 
 Kubernetes manifests are deeply nested and a perfect use case. Given a `deployment.yml`:
 
@@ -227,7 +255,7 @@ yamlql sql -f deployment.yml "SELECT name, image, resources_limits_cpu FROM spec
 ```
 The `--output list` format is ideal here for clear, readable results.
 
-### Example 3: Natural Language to SQL
+### Example 4: Natural Language to SQL
 
 Using the same `deployment.yml`, you can get answers without writing any SQL.
 
@@ -241,6 +269,7 @@ Now, ask a question in plain English:
 ```bash
 yamlql ai -f deployment.yml "what is the name of the container and what is its cpu limit?"
 ```
+
 Same can be done with Gemini - just change the provider and set the API key:
 
 ```bash

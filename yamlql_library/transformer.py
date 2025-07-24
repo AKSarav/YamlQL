@@ -20,22 +20,39 @@ class DataTransformer:
                 paths.extend(self._find_nested_lists(v, current_path))
         return paths
 
+    def _stringify_scalar_lists(self, data: Any) -> Any:
+        """Recursively traverses data to convert all lists of scalars into lists of strings."""
+        if isinstance(data, dict):
+            return {k: self._stringify_scalar_lists(v) for k, v in data.items()}
+        if isinstance(data, list):
+            # Check if it's a list of scalars (not a list of dicts/lists)
+            is_scalar_list = all(not isinstance(item, (dict, list)) for item in data)
+            if is_scalar_list:
+                return [str(item) for item in data]
+            else:
+                # It's a list of objects or mixed content, recurse
+                return [self._stringify_scalar_lists(item) for item in data]
+        return data
+
     def _normalize_records(self, table_name: str, records: List[Dict]) -> List[Tuple[str, pd.DataFrame]]:
         """Handles the complex normalization of a list of dictionary objects."""
         if not records:
             return []
 
+        # Recursively convert all lists of scalars to lists of strings before processing
+        processed_records = [self._stringify_scalar_lists(record) for record in records]
+
         tables = []
-        nested_list_paths = self._find_nested_lists(records[0])
+        nested_list_paths = self._find_nested_lists(processed_records[0])
         
         # Determine the top-level scalar/simple fields to use as metadata for joins
-        meta_cols = [k for k, v in records[0].items() if not isinstance(v, (dict, list))]
+        meta_cols = [k for k, v in processed_records[0].items() if not isinstance(v, (dict, list))]
 
         # Create a separate table for each nested list found
         for path in nested_list_paths:
             nested_table_name = f"{table_name}_{'_'.join(path)}"
             child_df = pd.json_normalize(
-                records,
+                processed_records,
                 record_path=path,
                 meta=meta_cols,
                 sep='_',
@@ -43,14 +60,16 @@ class DataTransformer:
                 meta_prefix=f"{table_name}_"
             )
             child_df.columns = [c.replace(' ', '_').replace('.', '_') for c in child_df.columns]
-            # Coerce all non-numeric columns to string to avoid type mismatches
+            # Coerce all non-numeric columns to string to avoid type mismatches, but preserve lists for DuckDB array support
             for col in child_df.columns:
                 if not pd.api.types.is_numeric_dtype(child_df[col]):
-                    child_df[col] = child_df[col].astype(str)
+                    # If the column is a list (and not a list of dicts), leave as is
+                    if not child_df[col].apply(lambda x: isinstance(x, list)).any():
+                        child_df[col] = child_df[col].astype(str)
             tables.append((nested_table_name, child_df))
 
         # Create the parent table by flattening everything first...
-        parent_df = pd.json_normalize(records, sep='_')
+        parent_df = pd.json_normalize(processed_records, sep='_')
         parent_df.columns = [c.replace(' ', '_').replace('.', '_') for c in parent_df.columns]
         
         # ...then dropping the columns that were extracted into separate tables.
@@ -64,10 +83,11 @@ class DataTransformer:
         
         # Only add the parent table if it's not empty after the nested lists were removed.
         if not parent_df.empty and parent_df.shape[1] > 0:
-            # Coerce all non-numeric columns to string to avoid type mismatches
+            # Coerce all non-numeric columns to string to avoid type mismatches, but preserve lists for DuckDB array support
             for col in parent_df.columns:
                 if not pd.api.types.is_numeric_dtype(parent_df[col]):
-                    parent_df[col] = parent_df[col].astype(str)
+                    if not parent_df[col].apply(lambda x: isinstance(x, list)).any():
+                        parent_df[col] = parent_df[col].astype(str)
             tables.append((table_name, parent_df))
         
         return tables
@@ -106,12 +126,16 @@ class DataTransformer:
                     tables.extend(self._normalize_records(table_name, value))
                 elif all(not isinstance(item, (dict, list)) for item in value):
                     # It's a list of simple scalars, create a single-column DataFrame
-                    df = pd.DataFrame({table_name: value})
+                    # This case is for top-level lists of scalars, which is already handled correctly
+                    # by the logic below, but we can keep the explicit conversion for clarity.
+                    value_as_str = [str(x) for x in value]
+                    df = pd.DataFrame({table_name: value_as_str})
                     df.columns = [c.replace(' ', '_').replace('.', '_') for c in df.columns]
-                    # Coerce all non-numeric columns to string to avoid type mismatches
+                    # This post-coercion is now less critical but safe to keep.
                     for col in df.columns:
                         if not pd.api.types.is_numeric_dtype(df[col]):
-                            df[col] = df[col].astype(str)
+                            if not df[col].apply(lambda x: isinstance(x, list)).any():
+                                df[col] = df[col].astype(str)
                     tables.append((table_name, df))
                 # Otherwise, it's a mixed or unsupported list type, so we ignore it.
             elif isinstance(value, dict):
