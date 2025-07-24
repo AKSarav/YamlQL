@@ -1,6 +1,7 @@
 import os
 import sys
 from dotenv import load_dotenv
+from typing import Tuple, List
 
 # Load environment variables from .env file
 load_dotenv()
@@ -67,8 +68,9 @@ def main(
 
 @app.command(name="sql")
 def sql_command(
-    sql_query: str = typer.Argument(..., help="The SQL query to execute."),
+    sql_query: List[str] = typer.Argument(None, help="The SQL query to execute."),
     file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to query."),
+    sql_file: str = typer.Option(None, "--sql-file", help="Path to a file containing the SQL query. If provided, overrides the positional SQL query."),
     output: OutputFormat = typer.Option(
         OutputFormat.AUTO, 
         "--output", 
@@ -79,7 +81,14 @@ def sql_command(
     """
     Run a SQL query against a YAML file and print the results.
     """
-    cli_logic.run_query(sql_query, file, output)
+    if sql_file:
+        with open(sql_file, 'r') as f:
+            sql_query_str = f.read().strip()
+    else:
+        if not sql_query:
+            raise typer.BadParameter("You must provide a SQL query as an argument or via --sql-file.")
+        sql_query_str = " ".join(sql_query)
+    cli_logic.run_query(sql_query_str, file, output)
 
 
 @app.command()
