@@ -43,6 +43,18 @@ yamlql sql -f docker-compose.yml "SELECT name, image FROM services"
 yamlql ai -f docker-compose.yml "What services use the postgres image?"
 ```
 
+## Global Options
+
+### Displaying the Version
+
+You can check the installed version of YamlQL using the `--version` or `-v` flag. This is useful for verifying your installation and ensuring you are on the latest version.
+
+```bash
+yamlql --version
+# or
+yamlql -v
+```
+
 ## Getting Started
 
 Check out our [Quick Start Guide](getting-started/quick-start.md) to begin using YamlQL, or dive into specific topics:
