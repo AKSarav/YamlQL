@@ -41,6 +41,13 @@ pip install yamlql
 
 To run a SQL query against a YAML file:
 ```bash
+yamlql sql --file path/to/your.yml SELECT column_a, column_b FROM my_table
+# Or, for complex queries, use a SQL file:
+yamlql sql --file path/to/your.yml --sql-file myquery.sql
+```
+
+You can also use the explicit `sql` subcommand (legacy style, still supported):
+```bash
 yamlql sql --file path/to/your.yml "SELECT column_a, column_b FROM my_table"
 ```
 
@@ -48,7 +55,7 @@ yamlql sql --file path/to/your.yml "SELECT column_a, column_b FROM my_table"
 
 For wide tables or complex data, the `list` output format is often more readable.
 ```bash
-yamlql sql --file path/to/your.yml "SELECT * FROM my_table" --output list
+yamlql -f path/to/your.yml "SELECT * FROM my_table" --output list
 ```
 
 #### Discovering the Schema
@@ -126,17 +133,18 @@ print(results)
 YamlQL transforms YAML files into a queryable, relational database on the fly. It follows a set of rules to create an intuitive schema from your YAML structure.
 
 1.  **Table Discovery**:
-    *   If your YAML file has multiple root keys, each key is treated as a potential table.
-    *   If a key has multiple children, a separate table is created for each child.
-    *   This approach ensures that deeply nested structures are appropriately flattened into relational tables.
+    *   **Dictionary Root**: If your YAML file's root is a dictionary, its top-level keys are treated as tables.
+        *   **Heuristic for Single Root Keys**: If there is only one top-level key and its value is a *dictionary* (e.g., a Kubernetes manifest with a single `apiVersion` document), YamlQL will "step inside" that key and use its children as the main tables for a more intuitive schema.
+    *   **Root-level List**: If your YAML file's root is a list of objects, it is treated as a single table named `root`.
 
 2.  **Transformation Rules**:
-    *   **Dictionaries / Objects**: A YAML object will be flattened into a single-row table. Nested keys are combined with an underscore (`_`). For example, `owner.contact.email` becomes a column named `owner_contact_email`.
+    *   **Dictionaries / Objects**: A YAML object will be flattened into a single-row table. Nested keys are combined with an underscore (`_`).
+    *   **Dictionaries of Dictionaries (e.g., Docker Compose `services`)**: As a core principle, if a dictionary's values are all themselves dictionaries, YamlQL will not create one giant table. Instead, it will create a **separate table for each entry**, named by combining the parent and child keys. For example, a `postgres` entry inside a `services` block will become a table named `services_postgres`.
     *   **Lists of Objects**: A list of objects (e.g., a list of `users`) becomes a standard, multi-row table.
     *   **Deeply Nested Lists of Objects**: When a list of objects is found nested inside another object (e.g., a list of `containers` inside a `spec`), YamlQL automatically extracts it into its own separate table (e.g., `spec_template_spec_containers`). It also copies parent fields into this new table to allow for `JOIN` operations.
-    *   **Lists of Simple Values**: A list of simple values (e.g., strings or numbers) is converted into a single-column table.
+    *   **Lists of Simple Values**: A list of simple values (e.g., strings, numbers, or booleans) found under a key will be converted into a new, single-column table named after its parent keys (e.g., a list under `rds-mysql` inside `amazon-rds` would create a table named `amazon_rds_rds_mysql`). To ensure type safety, especially for lists with mixed types like `[True, 'A', 123]`, all elements are converted to strings. This results in a `VARCHAR[]` column, which you can query using DuckDB's powerful array functions.
 
-3.  **Sanitization**: All generated column names are sanitized to be SQL-friendly. Special characters like spaces or periods in YAML keys are replaced with underscores.
+3.  **Sanitization**: All generated table and column names are sanitized to be SQL-friendly. Special characters like spaces, periods, and hyphens in YAML keys are replaced with underscores (`_`). For example, a key named `amazon-rds` becomes a table or column named `amazon_rds`.
 
 4.  **Discovery**: Because the transformation is complex, the `discover` command is provided to inspect the final schema. It lists all the tables YamlQL has created from your file, along with all of their columns and data types, removing any guesswork.
 
@@ -161,7 +169,38 @@ Building YamlQL was an iterative process that involved solving several real-worl
 
 Here are a few examples to show how YamlQL can be used in different scenarios.
 
-### Example 1: Basic Joins
+### Example 1: Working with Lists and Sanitized Keys
+
+YamlQL can handle complex YAML, including keys with hyphens and nested lists of simple values.
+
+Given a `service-catalog.yml`:
+```yaml
+# service-catalog.yml
+service:
+  amazon-rds:
+    rds-mysql:
+      - single-az-instance
+      - multi-az-with-standby
+  aws-lambda:
+    standalone-lambda:
+      - standalone-lambda
+```
+
+YamlQL automatically sanitizes the hyphenated keys and creates separate tables for the nested lists:
+
+```bash
+# Discover the schema to see the new tables
+yamlql discover -f service-catalog.yml
+```
+
+The output will show tables like `service_amazon_rds_rds_mysql` and `service_aws_lambda_standalone_lambda`. You can then query them:
+
+```bash
+# Query the options for rds-mysql
+yamlql sql -f service-catalog.yml "SELECT * FROM service_amazon_rds_rds_mysql"
+```
+
+### Example 2: Basic Joins
 
 Given a simple `data.yml` with users and posts:
 
@@ -187,7 +226,7 @@ yamlql sql --file data.yml "SELECT u.name, p.title FROM users u JOIN posts p ON 
 ```
 *This query will return the name "John Doe" with "First Post" and "Second Post".*
 
-### Example 2: Querying a Kubernetes Manifest
+### Example 3: Querying a Kubernetes Manifest
 
 Kubernetes manifests are deeply nested and a perfect use case. Given a `deployment.yml`:
 
@@ -222,7 +261,7 @@ yamlql sql -f deployment.yml "SELECT name, image, resources_limits_cpu FROM spec
 ```
 The `--output list` format is ideal here for clear, readable results.
 
-### Example 3: Natural Language to SQL
+### Example 4: Natural Language to SQL
 
 Using the same `deployment.yml`, you can get answers without writing any SQL.
 
@@ -236,6 +275,7 @@ Now, ask a question in plain English:
 ```bash
 yamlql ai -f deployment.yml "what is the name of the container and what is its cpu limit?"
 ```
+
 Same can be done with Gemini - just change the provider and set the API key:
 
 ```bash

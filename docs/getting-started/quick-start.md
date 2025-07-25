@@ -24,13 +24,35 @@ Once you know the schema, you can run SQL queries:
 
 ```bash
 # Simple SELECT
-yamlql sql -f docker-compose.yml "SELECT * FROM services"
+yamlql sql -f docker-compose.yml SELECT * FROM services
 
 # Filtering
-yamlql sql -f docker-compose.yml "SELECT name, image FROM services WHERE image LIKE '%postgres%'"
+yamlql sql -f docker-compose.yml SELECT name, image FROM services WHERE image LIKE '%postgres%'
 
 # Using list output for better readability
-yamlql sql -f docker-compose.yml "SELECT * FROM services" --output list
+yamlql sql -f docker-compose.yml SELECT * FROM services --output list
+
+# For complex queries, use a SQL file
+yamlql sql -f docker-compose.yml --sql-file myquery.sql
+```
+
+### Working with Lists/Arrays
+
+If your YAML contains a list of scalars (strings, numbers, booleans), it is stored as a native DuckDB `LIST` type. To ensure type safety, especially for lists with mixed types, **all list elements are automatically converted to strings**.
+
+For example, given this YAML with a mixed-type list:
+```yaml
+config:
+  - name: feature_A
+    options: [True, 'A', 123]
+```
+The `options` column will be stored as a `LIST<VARCHAR>` (a list of strings). You can then use DuckDB's array functions to query it:
+```sql
+-- Safely access any element by index (it will be a string)
+SELECT name, options[1] AS first_option FROM config;
+
+-- Unnest the array into individual rows
+SELECT name, UNNEST(options) AS option FROM config;
 ```
 
 ### 3. Using AI Queries

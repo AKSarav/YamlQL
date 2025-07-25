@@ -1,0 +1,42 @@
+service:
+  amazon-rds:
+    rds-mysql:
+      - single-az-instance
+      - multi-az-with-standby
+      - blue-green-deployment   
+    rds-postgresql:
+      - single-az-instance
+      - multi-az-with-standby
+      - multi-az-db-cluster
+      - blue-green-deployment  
+    aurora-mysql:
+      - single-master-cluster
+      - multi-master-cluster
+      - blue-green-deployment   
+    aurora-postgresql:
+      - single-master-cluster
+      - blue-green-deployment  
+  amazon-ec2:
+    asg:
+      - single-node
+      - blue-green-with-asg
+    standalone: #variant
+      - single-node
+
+  aws-lambda:
+    standalone-lambda:
+      - standalone-lambda
+    eventdriven:
+      - eventdriven
+    apigateway-with-versioning:
+      - apigateway-with-versioning
+    apigateway:
+      - apigateway
+
+  amazon-s3:
+    standalone-bucket:
+      - standalone-bucket
+    static-website-with-cloudfront:
+      - static-website-with-cloudfront
+    eventdriven-data-bucket:
+      - eventdriven-data-bucket

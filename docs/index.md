@@ -10,6 +10,8 @@ YamlQL is a powerful command-line tool and Python library that allows you to que
 - **Metadata Tables**: Built-in tables to understand relationships and structure
 - **Multiple Output Formats**: Table and list views for better readability
 - **Multiple LLM Providers**: Support for OpenAI and Google's Gemini
+- **Native DuckDB List/Array Support**: YAML lists of scalars (e.g., [1, 2, 3] or ['a', 'b', 'c']) are now stored as DuckDB arrays, not strings. You can use DuckDB's array functions (like UNNEST, ARRAY_LENGTH, or direct indexing) in your SQL queries.
+- **Run SQL from a File**: Use the `--sql-file` option to run SQL queries from a file, making it easy to work with complex queries or avoid shell quoting issues.
 
 ## Use Cases
 
@@ -29,11 +31,28 @@ pip install yamlql
 # Discover the schema of a YAML file
 yamlql discover -f docker-compose.yml
 
-# Run a SQL query
+# Run a SQL query (new default, recommended)
+yamlql sql -f docker-compose.yml SELECT name, image FROM services
+# Or, for complex queries, use a SQL file
+yamlql sql -f docker-compose.yml --sql-file myquery.sql
+
+# (Alternatively, you can use the explicit subcommand)
 yamlql sql -f docker-compose.yml "SELECT name, image FROM services"
 
 # Ask a question in natural language
 yamlql ai -f docker-compose.yml "What services use the postgres image?"
+```
+
+## Global Options
+
+### Displaying the Version
+
+You can check the installed version of YamlQL using the `--version` or `-v` flag. This is useful for verifying your installation and ensuring you are on the latest version.
+
+```bash
+yamlql --version
+# or
+yamlql -v
 ```
 
 ## Getting Started

@@ -11,36 +11,49 @@ YamlQL transforms YAML files into a relational database schema that can be queri
 
 ## Transformation Rules
 
-### 1. Root Level Values
+### 1. Root-Level Structures
+
+#### Dictionary Root
+If the YAML root is a dictionary (the most common case), its top-level keys are treated as tables.
+
+**Heuristic for Single Keys**: To create a more intuitive schema, if there is only one top-level key and its value is a *dictionary* (common in files like Kubernetes manifests), YamlQL will "step inside" that key and use its children as the main tables. In all other cases (e.g., a single key pointing to a list, or multiple top-level keys), the keys themselves are used to form the table names.
 
 ```yaml
 # Input YAML
 version: '3.8'
-name: my-app
-environment: production
+services:
+  ...
 ```
+This would result in tables like `services`.
 
-Becomes:
-```sql
--- root table
-CREATE TABLE root (
-    version VARCHAR,
-    name VARCHAR,
-    environment VARCHAR
-);
+#### List Root
+If the YAML root is a list of objects, it is treated as a single table named `root`.
+```yaml
+# Input YAML
+- name: service-a
+  image: nginx
+- name: service-b
+  image: apache
 ```
+This creates a `root` table with columns `name` and `image`.
 
 ### 2. Nested Objects
 
+When YamlQL encounters a nested dictionary (object), it applies one of two strategies:
+
+1.  **Standard Flattening**: For a simple nested object, its keys are flattened into the parent table's columns with an underscore prefix.
+2.  **Dictionary of Objects**: As a core principle, if a dictionary's values are **all** themselves dictionaries (a common pattern for defining a collection of named items, like in a Docker Compose `services` block), YamlQL creates a **new, separate table for each entry**. The table name is a combination of the parent and child keys (e.g., `services_postgres`).
+
 ```yaml
-# Input YAML
-database:
-  host: localhost
-  port: 5432
-  credentials:
-    username: admin
-    password: secret
+# Example of a Dictionary of Objects
+services:
+  postgres:
+    image: postgres:14
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7
 ```
+This structure will result in two tables: `services_postgres` and `services_redis`.
 
 Two approaches based on depth:
 
@@ -78,12 +91,17 @@ tags:
   - v1
 ```
 
-Becomes:
+If a list contains only simple scalar values (strings, numbers, booleans), it will be loaded as a native DuckDB `LIST` type. To ensure type safety and prevent errors from mixed-type lists (e.g., `[True, 'A', 123]`), **all elements are automatically converted to strings (VARCHAR)**.
+
+This creates a column of type `VARCHAR[]` (a list of strings). For a top-level list like the `tags` example, it creates a single-column table:
 ```sql
 CREATE TABLE tags (
-    value VARCHAR  -- Each array item becomes a row
+    value VARCHAR[]
 );
 ```
+For a list inside an object, it becomes a `VARCHAR[]` column in that object's table. You can then use DuckDB's powerful array functions on it.
+
+However, if a list of scalars is found under a key that is part of a larger object structure being flattened, a new table is created instead. For a key `rds-mysql` inside an `amazon-rds` object, this creates a new table `amazon_rds_rds_mysql`.
 
 ### 4. Arrays of Objects
 
@@ -215,8 +233,8 @@ CREATE TABLE volumes (
 2. **Column Names**:
    - Simple fields: Field name (e.g., `name`)
    - Nested fields: Parent_Child (e.g., `resources_limits_cpu`)
-   - Special characters replaced with underscore
-   - Case preserved
+   - **Special Character Sanitization**: Any characters that are not valid in unquoted SQL identifiers (like spaces, periods, and hyphens) are replaced with underscores. For example, a YAML key `service-name` becomes the column `service_name`.
+   - Case is preserved.
 
 3. **Special Columns**:
    - `_id`: Primary key for child tables

@@ -8,6 +8,9 @@ from . import YamlQL
 from .llm_providers import get_llm_provider
 from .utils import OutputFormat, _render_list, _render_table, _get_required_table_width
 from rich.console import Console
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
 def run_query(sql_query: str, file: str, output: OutputFormat):
     """Core logic for the 'query' command."""
@@ -38,6 +41,65 @@ def run_query(sql_query: str, file: str, output: OutputFormat):
     finally:
         if yql:
             yql.close()
+
+def run_interactive_sql(file: str, output: OutputFormat):
+    """Starts an interactive SQL prompt."""
+    yql = None
+    try:
+        yql = YamlQL(file_path=file)
+        rich.print(f"[bold green]Connected to {file}.[/bold green]")
+        rich.print("Enter SQL commands. End with a semicolon (;) to execute.")
+        rich.print("Type 'exit' or 'quit' to close.")
+
+        session = PromptSession(
+            history=FileHistory(os.path.expanduser("~/.yamlql_history")),
+            auto_suggest=AutoSuggestFromHistory()
+        )
+        
+        multiline_buffer = []
+
+        while True:
+            prompt_text = "yamlql> " if not multiline_buffer else "     ...> "
+            line = session.prompt(prompt_text)
+
+            if line.strip().lower() in ('exit', 'quit'):
+                break
+            
+            multiline_buffer.append(line)
+            
+            # If the line ends with a semicolon, it's time to execute
+            if line.strip().endswith(';'):
+                full_query = " ".join(multiline_buffer).strip()
+                # Remove the trailing semicolon for DuckDB
+                full_query = full_query[:-1]
+                
+                try:
+                    results = yql.query(full_query)
+                    if results.empty:
+                        rich.print("[yellow]Query returned no results.[/yellow]")
+                    else:
+                        console = Console()
+                        use_list_view = (
+                            output == OutputFormat.LIST or
+                            (output == OutputFormat.AUTO and _get_required_table_width(results) > console.width)
+                        )
+                        if use_list_view:
+                            _render_list(results)
+                        else:
+                            _render_table(results)
+                except Exception as e:
+                    rich.print(f"[bold red]Query Error:[/bold red] {e}")
+
+                multiline_buffer = [] # Reset for the next query
+
+    except FileNotFoundError as e:
+        rich.print(f"[bold red]Error:[/bold red] {e}")
+    except Exception as e:
+        rich.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
+    finally:
+        if yql:
+            yql.close()
+        rich.print("[bold]Exiting YamlQL.[/bold]")
 
 def run_nlp(question: str, file: str, output: OutputFormat):
     """Core logic for the 'nlp' command."""

@@ -1,6 +1,7 @@
 import os
 import sys
 from dotenv import load_dotenv
+from typing import Tuple, List
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,6 +21,13 @@ from .llm_providers import get_llm_provider
 from . import cli_logic
 from .utils import OutputFormat
 
+__version__ = "0.2.0"
+
+def version_callback(value: bool):
+    if value:
+        rich.print(f"YamlQL Version: {__version__}")
+        raise typer.Exit()
+
 app = typer.Typer(
     add_completion=False,
     help="YamlQL: A command-line tool to query YAML files using SQL.",
@@ -35,6 +43,14 @@ def main(
         "-e",
         help="A direct SQL or NLP query to run using session environment variables.",
     ),
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        callback=version_callback,
+        is_eager=True,
+        help="Show the version and exit.",
+    )
 ):
     """
     Main callback to handle the --execute/-e flag for direct queries.
@@ -45,28 +61,31 @@ def main(
 
     # If --execute is used, run the query and exit.
     if execute:
-        file = os.environ.get("YAMLQL_FILE")
+        file_env = os.environ.get("YAMLQL_FILE")
         mode = (os.environ.get("YAMLQL_MODE") or "SQL").upper()
 
-        if not file:
+        if not file_env:
             rich.print("[bold red]Error:[/bold red] The --execute/-e flag requires the YAMLQL_FILE environment variable to be set.", file=sys.stderr)
             raise typer.Exit(code=1)
 
         if mode == "SQL":
-            cli_logic.run_query(execute, file, OutputFormat.AUTO)
+            cli_logic.run_query(execute, file_env, OutputFormat.AUTO)
         elif mode == "AI":
-            cli_logic.run_nlp(execute, file, OutputFormat.AUTO)
+            cli_logic.run_nlp(execute, file_env, OutputFormat.AUTO)
         else:
             rich.print("[bold red]Error:[/bold red] Invalid YAMLQL_MODE set. Use SQL or AI.", file=sys.stderr)
             raise typer.Exit(code=1)
-        
-        # Exit after execution to prevent Typer from looking for a subcommand.
         raise typer.Exit()
+
+    # If nothing is provided, show help
+    typer.echo(ctx.get_help())
+    raise typer.Exit()
 
 @app.command(name="sql")
 def sql_command(
-    sql_query: str = typer.Argument(..., help="The SQL query to execute."),
+    sql_query: List[str] = typer.Argument(None, help="The SQL query to execute. If not provided, an interactive prompt will be started."),
     file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to query."),
+    sql_file: str = typer.Option(None, "--sql-file", help="Path to a file containing the SQL query. Overrides the positional SQL query."),
     output: OutputFormat = typer.Option(
         OutputFormat.AUTO, 
         "--output", 
@@ -75,9 +94,21 @@ def sql_command(
     )
 ):
     """
-    Run a SQL query against a YAML file and print the results.
+    Run a SQL query against a YAML file.
+
+    If a query is provided as an argument or via --sql-file, it is executed directly.
+    If no query is provided, an interactive SQL prompt is started for exploratory querying.
     """
-    cli_logic.run_query(sql_query, file, output)
+    if sql_file:
+        with open(sql_file, 'r') as f:
+            sql_query_str = f.read().strip()
+        cli_logic.run_query(sql_query_str, file, output)
+    elif sql_query:
+        sql_query_str = " ".join(sql_query)
+        cli_logic.run_query(sql_query_str, file, output)
+    else:
+        # No query provided, start interactive mode
+        cli_logic.run_interactive_sql(file, output)
 
 
 @app.command()
