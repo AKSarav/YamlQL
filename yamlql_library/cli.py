@@ -21,6 +21,13 @@ from .llm_providers import get_llm_provider
 from . import cli_logic
 from .utils import OutputFormat
 
+__version__ = "0.2.0"
+
+def version_callback(value: bool):
+    if value:
+        rich.print(f"YamlQL Version: {__version__}")
+        raise typer.Exit()
+
 app = typer.Typer(
     add_completion=False,
     help="YamlQL: A command-line tool to query YAML files using SQL.",
@@ -36,6 +43,14 @@ def main(
         "-e",
         help="A direct SQL or NLP query to run using session environment variables.",
     ),
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        callback=version_callback,
+        is_eager=True,
+        help="Show the version and exit.",
+    )
 ):
     """
     Main callback to handle the --execute/-e flag for direct queries.

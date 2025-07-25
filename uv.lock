@@ -1642,7 +1642,7 @@ wheels = [
 
 [[package]]
 name = "yamlql"
-version = "0.1.2.1"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
@@ -1651,6 +1651,7 @@ dependencies = [
     { name = "openai" },
     { name = "pandas" },
     { name = "prompt-toolkit" },
+    { name = "pytest" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "rich" },
@@ -1684,6 +1685,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "prompt-toolkit", specifier = ">=3.0.47" },
     { name = "pymdown-extensions", marker = "extra == 'dev'", specifier = ">=10.0" },
+    { name = "pytest", specifier = ">=8.4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "python-dotenv", marker = "extra == 'nlp'", specifier = ">=1.0.0" },

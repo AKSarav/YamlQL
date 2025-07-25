@@ -133,11 +133,13 @@ print(results)
 YamlQL transforms YAML files into a queryable, relational database on the fly. It follows a set of rules to create an intuitive schema from your YAML structure.
 
 1.  **Table Discovery**:
-    *   **Root-level Dictionary**: If your YAML file's root is a dictionary, each key is treated as a potential table. If a key has multiple children, a separate table is created for each child. This approach ensures that deeply nested structures are appropriately flattened.
+    *   **Dictionary Root**: If your YAML file's root is a dictionary, its top-level keys are treated as tables.
+        *   **Heuristic for Single Root Keys**: If there is only one top-level key and its value is a *dictionary* (e.g., a Kubernetes manifest with a single `apiVersion` document), YamlQL will "step inside" that key and use its children as the main tables for a more intuitive schema.
     *   **Root-level List**: If your YAML file's root is a list of objects, it is treated as a single table named `root`.
 
 2.  **Transformation Rules**:
-    *   **Dictionaries / Objects**: A YAML object will be flattened into a single-row table. Nested keys are combined with an underscore (`_`). For example, `owner.contact.email` becomes a column named `owner_contact_email`.
+    *   **Dictionaries / Objects**: A YAML object will be flattened into a single-row table. Nested keys are combined with an underscore (`_`).
+    *   **Dictionaries of Dictionaries (e.g., Docker Compose `services`)**: As a core principle, if a dictionary's values are all themselves dictionaries, YamlQL will not create one giant table. Instead, it will create a **separate table for each entry**, named by combining the parent and child keys. For example, a `postgres` entry inside a `services` block will become a table named `services_postgres`.
     *   **Lists of Objects**: A list of objects (e.g., a list of `users`) becomes a standard, multi-row table.
     *   **Deeply Nested Lists of Objects**: When a list of objects is found nested inside another object (e.g., a list of `containers` inside a `spec`), YamlQL automatically extracts it into its own separate table (e.g., `spec_template_spec_containers`). It also copies parent fields into this new table to allow for `JOIN` operations.
     *   **Lists of Simple Values**: A list of simple values (e.g., strings, numbers, or booleans) found under a key will be converted into a new, single-column table named after its parent keys (e.g., a list under `rds-mysql` inside `amazon-rds` would create a table named `amazon_rds_rds_mysql`). To ensure type safety, especially for lists with mixed types like `[True, 'A', 123]`, all elements are converted to strings. This results in a `VARCHAR[]` column, which you can query using DuckDB's powerful array functions.

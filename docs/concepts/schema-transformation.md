@@ -15,6 +15,9 @@ YamlQL transforms YAML files into a relational database schema that can be queri
 
 #### Dictionary Root
 If the YAML root is a dictionary (the most common case), its top-level keys are treated as tables.
+
+**Heuristic for Single Keys**: To create a more intuitive schema, if there is only one top-level key and its value is a *dictionary* (common in files like Kubernetes manifests), YamlQL will "step inside" that key and use its children as the main tables. In all other cases (e.g., a single key pointing to a list, or multiple top-level keys), the keys themselves are used to form the table names.
+
 ```yaml
 # Input YAML
 version: '3.8'
@@ -36,15 +39,21 @@ This creates a `root` table with columns `name` and `image`.
 
 ### 2. Nested Objects
 
+When YamlQL encounters a nested dictionary (object), it applies one of two strategies:
+
+1.  **Standard Flattening**: For a simple nested object, its keys are flattened into the parent table's columns with an underscore prefix.
+2.  **Dictionary of Objects**: As a core principle, if a dictionary's values are **all** themselves dictionaries (a common pattern for defining a collection of named items, like in a Docker Compose `services` block), YamlQL creates a **new, separate table for each entry**. The table name is a combination of the parent and child keys (e.g., `services_postgres`).
+
 ```yaml
-# Input YAML
-database:
-  host: localhost
-  port: 5432
-  credentials:
-    username: admin
-    password: secret
+# Example of a Dictionary of Objects
+services:
+  postgres:
+    image: postgres:14
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7
 ```
+This structure will result in two tables: `services_postgres` and `services_redis`.
 
 Two approaches based on depth:
 
