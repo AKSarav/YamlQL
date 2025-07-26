@@ -7,10 +7,9 @@ YamlQL is a powerful command-line tool and Python library that allows you to que
 - **SQL Querying**: Query YAML files using standard SQL syntax
 - **AI-Powered**: Ask questions in natural language and get SQL-powered answers
 - **Schema Discovery**: Automatically discover and understand YAML structure
-- **Metadata Tables**: Built-in tables to understand relationships and structure
 - **Multiple Output Formats**: Table and list views for better readability
 - **Multiple LLM Providers**: Support for OpenAI and Google's Gemini
-- **Native DuckDB List/Array Support**: YAML lists of scalars (e.g., [1, 2, 3] or ['a', 'b', 'c']) are now stored as DuckDB arrays, not strings. You can use DuckDB's array functions (like UNNEST, ARRAY_LENGTH, or direct indexing) in your SQL queries.
+- **Native DuckDB List/Array Support**: YAML lists of scalars (e.g., [1, 2, 3] or ['a', 'b', 'c']) are stored as DuckDB arrays with all elements converted to strings for type safety. You can use DuckDB's array functions (like UNNEST, ARRAY_LENGTH, or direct indexing) in your SQL queries.
 - **Run SQL from a File**: Use the `--sql-file` option to run SQL queries from a file, making it easy to work with complex queries or avoid shell quoting issues.
 
 ## Use Cases
@@ -32,12 +31,12 @@ pip install yamlql
 yamlql discover -f docker-compose.yml
 
 # Run a SQL query (new default, recommended)
-yamlql sql -f docker-compose.yml SELECT name, image FROM services
+yamlql sql -f docker-compose.yml "SELECT web_image, db_image FROM services"
 # Or, for complex queries, use a SQL file
 yamlql sql -f docker-compose.yml --sql-file myquery.sql
 
 # (Alternatively, you can use the explicit subcommand)
-yamlql sql -f docker-compose.yml "SELECT name, image FROM services"
+yamlql sql -f docker-compose.yml "SELECT web_image, db_image FROM services"
 
 # Ask a question in natural language
 yamlql ai -f docker-compose.yml "What services use the postgres image?"

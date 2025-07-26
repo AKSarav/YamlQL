@@ -13,10 +13,8 @@ yamlql discover -f your-file.yml
 ```
 
 This will show:
-- Available tables
-- Column names and types
-- Relationships between tables
-- Metadata tables for advanced querying
+- Available tables and their column names and types
+- Relationships between tables created by YamlQL's intelligent transformation
 
 ### 2. Running SQL Queries
 
@@ -24,13 +22,13 @@ Once you know the schema, you can run SQL queries:
 
 ```bash
 # Simple SELECT
-yamlql sql -f docker-compose.yml SELECT * FROM services
+yamlql sql -f docker-compose.yml "SELECT * FROM services"
 
 # Filtering
-yamlql sql -f docker-compose.yml SELECT name, image FROM services WHERE image LIKE '%postgres%'
+yamlql sql -f docker-compose.yml "SELECT web_image, db_image FROM services WHERE web_image LIKE '%nginx%'"
 
 # Using list output for better readability
-yamlql sql -f docker-compose.yml SELECT * FROM services --output list
+yamlql sql -f docker-compose.yml "SELECT * FROM services" --output list
 
 # For complex queries, use a SQL file
 yamlql sql -f docker-compose.yml --sql-file myquery.sql
@@ -76,23 +74,32 @@ yamlql ai -f deployment.yml "What is the CPU limit for the nginx container?"
 # docker-compose.yml
 version: '3.8'
 services:
-  postgres:
+  web:
+    image: nginx:latest
+    ports:
+      - "80:80"
+  db:
     image: postgres:14
-    ports:
-      - "5432:5432"
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
+    environment:
+      POSTGRES_DB: myapp
+```
+
+Discover schema:
+```bash
+yamlql discover -f docker-compose.yml
+# Results in tables like: services, services_web, services_db, services_web_ports
 ```
 
 Query:
 ```bash
-# List all service ports
-yamlql sql -f docker-compose.yml "SELECT name, ports FROM services"
+# List all service images from the main services table
+yamlql sql -f docker-compose.yml "SELECT web_image, db_image FROM services"
+
+# Get detailed web service info
+yamlql sql -f docker-compose.yml "SELECT * FROM services_web"
 
 # Find services using specific images
-yamlql sql -f docker-compose.yml "SELECT * FROM services WHERE image LIKE '%postgres%'"
+yamlql sql -f docker-compose.yml "SELECT image FROM services_db WHERE image LIKE '%postgres%'"
 ```
 
 ### Kubernetes Manifests
@@ -103,6 +110,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx
+  namespace: default
 spec:
   replicas: 3
   template:
@@ -117,7 +125,13 @@ spec:
 
 Query:
 ```bash
-# Get container resource limits
+# Get deployment metadata
+yamlql sql -f deployment.yml "SELECT name, namespace FROM metadata"
+
+# Get replica count
+yamlql sql -f deployment.yml "SELECT replicas FROM spec"
+
+# Get container resource limits (if containers table is created)
 yamlql sql -f deployment.yml "SELECT name, resources_limits_cpu FROM spec_template_spec_containers"
 
 # Or use AI
@@ -146,20 +160,17 @@ Query:
 yamlql sql -f config.yml "SELECT name FROM application"
 
 # List enabled features
-yamlql sql -f config.yml "SELECT name FROM features WHERE enabled = true"
+yamlql sql -f config.yml "SELECT name FROM application_features WHERE enabled = true"
 ```
 
-## Using Metadata Tables
+## Understanding Table Names
 
-YamlQL creates special metadata tables to help understand the data structure:
+YamlQL creates table names based on your YAML structure:
 
-```bash
-# List all available tables
-yamlql sql -f your-file.yml "SELECT * FROM __tables"
-
-# Show relationships between tables
-yamlql sql -f your-file.yml "SELECT * FROM __relationships"
-```
+1. **Root-level keys** become table names (e.g., `services`, `metadata`, `spec`)
+2. **Nested objects** become separate tables with underscore-separated names (e.g., `services_web`, `services_db`)  
+3. **Arrays of objects** create separate tables for each item (e.g., `services_web_ports`)
+4. **Flattened fields** appear as columns with underscore-separated names (e.g., `web_image`, `db_image`)
 
 ## Tips and Best Practices
 
@@ -174,9 +185,14 @@ yamlql sql -f your-file.yml "SELECT * FROM __relationships"
    yamlql sql -f your-file.yml "SELECT * FROM complex_table" --output list
    ```
 
-3. **Leverage Metadata Tables**
-   - `__tables`: Lists all available tables
-   - `__relationships`: Shows table relationships
+3. **Work with Arrays**
+   ```bash
+   # Unnest array values
+   yamlql sql -f config.yml "SELECT name, UNNEST(ports) as port FROM services_web_ports"
+   
+   # Check array length
+   yamlql sql -f config.yml "SELECT ARRAY_LENGTH(web_ports) as port_count FROM services"
+   ```
 
 4. **Use Environment Variables for Repeated Queries**
    ```bash

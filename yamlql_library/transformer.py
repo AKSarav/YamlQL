@@ -99,26 +99,69 @@ class DataTransformer:
         all_tables.extend(extracted_tables)
         return all_tables
 
+    def _process_node(self, node_value: Any, table_name: str, tables_list: List, depth: int = 0):
+        """Recursively processes a node to create tables with universal heuristics."""
+        table_name = str(table_name).replace('-', '_')
+        
+        # Universal configuration - no domain-specific keywords
+        MAX_DEPTH = 5  # Reasonable depth limit to handle nesting without going overboard
+        MIN_DICT_SIZE_FOR_TABLE = 2  # Only create separate tables for dictionaries with 2+ keys
+        
+        # Check if we should stop recursing based on universal criteria
+        should_stop_recursing = depth >= MAX_DEPTH
+
+        if isinstance(node_value, list):
+            if not node_value: return
+            if all(isinstance(item, dict) for item in node_value):
+                # Always use _normalize_records for lists of objects to get proper flattening
+                tables_list.extend(self._normalize_records(table_name, node_value))
+            elif all(not isinstance(item, (dict, list)) for item in node_value):
+                df = pd.DataFrame({'value': [str(x) for x in node_value]})
+                tables_list.append((table_name, df))
+        
+        elif isinstance(node_value, dict):
+            scalar_data = {}
+            nested_dicts = {}
+
+            for key, value in node_value.items():
+                if isinstance(value, dict):
+                    # Only create separate tables for dictionaries that are large enough
+                    # and we haven't hit the depth limit
+                    if len(value) >= MIN_DICT_SIZE_FOR_TABLE and not should_stop_recursing:
+                        nested_dicts[key] = value
+                    # ALWAYS add a flattened version to preserve all data
+                    for sub_key, sub_value in value.items():
+                        if not isinstance(sub_value, (dict, list)):
+                            scalar_data[f"{key}_{sub_key}"] = sub_value
+                        elif isinstance(sub_value, list) and all(not isinstance(item, (dict, list)) for item in sub_value):
+                            # Flatten scalar lists
+                            scalar_data[f"{key}_{sub_key}"] = sub_value
+                elif isinstance(value, list):
+                    # Handle lists within dictionaries
+                    self._process_node(value, f"{table_name}_{key}", tables_list, depth + 1)
+                else:
+                    scalar_data[key] = value
+
+            if scalar_data:
+                tables_list.extend(self._normalize_records(table_name, [scalar_data]))
+
+            # Process nested dictionaries that qualified for their own tables
+            for child_name, child_value in nested_dicts.items():
+                new_table_name = f"{table_name}_{child_name}"
+                self._process_node(child_value, new_table_name, tables_list, depth + 1)
+
     def transform(self) -> List[Tuple[str, pd.DataFrame]]:
         """
-        Transforms the YAML data into a list of relational tables based on a simple,
-        predictable set of rules.
+        Transforms the YAML data into a list of relational tables by recursively
+        processing the data structure with smart stopping conditions.
         """
-        tables = []
+        all_tables = []
         data_copy = copy.deepcopy(self.data)
 
-        # Rule 1: If the root is a list, treat it as a single table named 'root'.
+        # Handle root-level list first
         if isinstance(data_copy, list):
-            if not data_copy:
-                return []
-            if all(isinstance(item, dict) for item in data_copy):
-                return self._normalize_records('root', data_copy)
-            elif all(not isinstance(item, (dict, list)) for item in data_copy):
-                value_as_str = [str(x) for x in data_copy]
-                df = pd.DataFrame({'value': value_as_str})
-                return [('root', df)]
-            else:
-                return [] # Ignore mixed-content root lists
+            self._process_node(data_copy, 'root', all_tables, depth=0)
+            return all_tables
 
         # Heuristic: If there is only one top-level key and its value is a dictionary
         # (e.g., a single document wrapper), step inside it for a more intuitive schema.
@@ -128,28 +171,19 @@ class DataTransformer:
         else:
             source_data = data_copy
 
-        # Rule 2: Each key in the source data becomes a table.
-        for table_name, value in source_data.items():
-            table_name = str(table_name).replace('-', '_')
+        if isinstance(source_data, dict):
+            # Check if this is a "record-like" dictionary (only scalar values)
+            # If so, treat it as a single record for a table
+            has_only_scalars = all(not isinstance(v, (dict, list)) for v in source_data.values())
             
-            if isinstance(value, list) and value:
-                if all(isinstance(item, dict) for item in value): # List of objects
-                    tables.extend(self._normalize_records(table_name, value))
-                elif all(not isinstance(item, (dict, list)) for item in value): # List of scalars
-                    value_as_str = [str(x) for x in value]
-                    df = pd.DataFrame({'value': value_as_str})
-                    tables.append((table_name, df))
-            elif isinstance(value, dict): # A single object
-                # Heuristic: If a dictionary's values are all themselves dictionaries,
-                # create a separate table for each child dictionary.
-                is_collection_of_objects = value and all(isinstance(v, dict) for v in value.values())
-                
-                if is_collection_of_objects:
-                    for child_name, child_value in value.items():
-                        new_table_name = f"{table_name}_{child_name}".replace('-', '_')
-                        tables.extend(self._normalize_records(new_table_name, [child_value]))
-                else:
-                    # It's a regular object to be flattened into a single-row table.
-                    tables.extend(self._normalize_records(table_name, [value]))
-            
-        return tables 
+            if has_only_scalars:
+                # This is a single record - create a table with one row
+                all_tables.extend(self._normalize_records('data', [source_data]))
+            else:
+                # This has nested structures - process each item separately
+                for table_name, value in source_data.items():
+                    self._process_node(value, table_name, all_tables, depth=0)
+        elif isinstance(source_data, list):
+            self._process_node(source_data, 'root', all_tables, depth=0)
+
+        return all_tables 

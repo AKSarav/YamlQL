@@ -5,26 +5,33 @@ YamlQL transforms YAML files into a relational database schema that can be queri
 ## Basic Principles
 
 1. **Scalar Values**: Simple key-value pairs become columns
-2. **Objects**: Nested objects become separate tables or flattened columns
-3. **Arrays**: Lists become either separate tables or array columns
-4. **Relationships**: Parent-child relationships are tracked in metadata
+2. **Objects**: Nested objects become separate tables or flattened columns based on intelligent heuristics
+3. **Arrays**: Lists become either separate tables (for objects) or array columns (for scalars)
+4. **Data Preservation**: Every field from your original YAML is preserved somewhere
 
 ## Transformation Rules
 
 ### 1. Root-Level Structures
 
 #### Dictionary Root
-If the YAML root is a dictionary (the most common case), its top-level keys are treated as tables.
+If the YAML root is a dictionary (the most common case), YamlQL analyzes the structure to create an optimal schema.
 
-**Heuristic for Single Keys**: To create a more intuitive schema, if there is only one top-level key and its value is a *dictionary* (common in files like Kubernetes manifests), YamlQL will "step inside" that key and use its children as the main tables. In all other cases (e.g., a single key pointing to a list, or multiple top-level keys), the keys themselves are used to form the table names.
+**Single-Key Unwrapping**: If there is only one top-level key and its value is a *dictionary* (common in files like Kubernetes manifests), YamlQL will "step inside" that key and use its children as the main tables, creating a more intuitive schema.
 
 ```yaml
 # Input YAML
 version: '3.8'
 services:
-  ...
+  web:
+    image: nginx:latest
+  db:
+    image: postgres:14
 ```
-This would result in tables like `services`.
+
+This creates tables like:
+- `services` (with flattened columns: `web_image`, `db_image`)
+- `services_web` (detailed web service configuration)
+- `services_db` (detailed db service configuration)
 
 #### List Root
 If the YAML root is a list of objects, it is treated as a single table named `root`.
@@ -39,306 +46,278 @@ This creates a `root` table with columns `name` and `image`.
 
 ### 2. Nested Objects
 
-When YamlQL encounters a nested dictionary (object), it applies one of two strategies:
+YamlQL uses intelligent heuristics to decide how to handle nested dictionaries:
 
-1.  **Standard Flattening**: For a simple nested object, its keys are flattened into the parent table's columns with an underscore prefix.
-2.  **Dictionary of Objects**: As a core principle, if a dictionary's values are **all** themselves dictionaries (a common pattern for defining a collection of named items, like in a Docker Compose `services` block), YamlQL creates a **new, separate table for each entry**. The table name is a combination of the parent and child keys (e.g., `services_postgres`).
+1. **Depth Limits**: To prevent over-granular tables, recursion stops at a maximum depth (currently 5 levels)
+2. **Size Thresholds**: Small dictionaries (fewer than 2 key-value pairs) are more likely to be flattened
+3. **Data Preservation**: Even when creating separate tables, scalar data is always flattened into parent tables to ensure no data loss
 
+## Table Creation Heuristics
+
+YamlQL uses two key configuration parameters to control table creation:
+
+### MAX_DEPTH = 5
+
+**Purpose**: Prevents excessive table creation in deeply nested YAML structures.
+
+**How it works**: 
+- YamlQL tracks nesting depth as it processes your YAML
+- Once depth reaches 5 levels, it stops creating separate tables and flattens everything into the current table
+- This prevents scenarios where deeply nested YAML creates hundreds of tiny tables
+
+**Example**:
 ```yaml
-# Example of a Dictionary of Objects
+# This would create tables at depths 0, 1, 2, 3, 4
+level1:                    # depth 0 - creates 'level1' table
+  level2:                  # depth 1 - creates 'level1_level2' table  
+    level3:                # depth 2 - creates 'level1_level2_level3' table
+      level4:              # depth 3 - creates 'level1_level2_level3_level4' table
+        level5:            # depth 4 - creates 'level1_level2_level3_level4_level5' table
+          level6:          # depth 5 - STOPS HERE, flattens into parent table
+            value: "deep"  # becomes 'level6_value' column in level5 table
+```
+
+**Practical Impact**:
+- ✅ **Kubernetes manifests**: Rarely exceed 5 levels, so all important structures get tables
+- ✅ **Docker Compose**: Typically 2-3 levels deep, fully supported
+- ✅ **Complex configs**: Prevents runaway table creation from overly nested data
+
+### MIN_DICT_SIZE_FOR_TABLE = 2
+
+**Purpose**: Only creates separate tables for dictionaries that have enough content to justify it.
+
+**How it works**:
+- Before creating a separate table for a nested dictionary, YamlQL counts its key-value pairs
+- If the dictionary has fewer than 2 keys, it's flattened into the parent table instead
+- If it has 2 or more keys, it gets its own table (unless depth limit is reached)
+
+**Example**:
+```yaml
+# Dictionary with 1 key - gets flattened
+service:
+  config:
+    port: 8080                    # Only 1 key, flattens to 'config_port' column
+
+# Dictionary with 2+ keys - gets separate table  
+service:
+  database:
+    host: localhost               # 2+ keys, creates 'service_database' table
+    port: 5432
+    name: myapp
+```
+
+**Before/After Comparison**:
+
+**Input YAML**:
+```yaml
 services:
-  postgres:
-    image: postgres:14
-    ports: ["5432:5432"]
-  redis:
-    image: redis:7
+  web:
+    image: nginx:latest
+    config:                     # 1 key - will flatten
+      port: 80
+    resources:                  # 2 keys - will create table
+      cpu: "100m"
+      memory: "128Mi"
 ```
-This structure will result in two tables: `services_postgres` and `services_redis`.
 
-Two approaches based on depth:
-
-1. **Flattened** (for simple nesting):
+**Tables Created**:
 ```sql
-CREATE TABLE database (
-    host VARCHAR,
-    port INTEGER,
-    credentials_username VARCHAR,
-    credentials_password VARCHAR
-);
-```
-
-2. **Separate Tables** (for complex nesting):
-```sql
-CREATE TABLE database (
-    host VARCHAR,
-    port INTEGER
-);
-
-CREATE TABLE database_credentials (
-    _id VARCHAR,  -- Reference to parent
-    username VARCHAR,
-    password VARCHAR
-);
-```
-
-### 3. Arrays of Scalars
-
-```yaml
-# Input YAML
-tags:
-  - production
-  - backend
-  - v1
-```
-
-If a list contains only simple scalar values (strings, numbers, booleans), it will be loaded as a native DuckDB `LIST` type. To ensure type safety and prevent errors from mixed-type lists (e.g., `[True, 'A', 123]`), **all elements are automatically converted to strings (VARCHAR)**.
-
-This creates a column of type `VARCHAR[]` (a list of strings). For a top-level list like the `tags` example, it creates a single-column table:
-```sql
-CREATE TABLE tags (
-    value VARCHAR[]
-);
-```
-For a list inside an object, it becomes a `VARCHAR[]` column in that object's table. You can then use DuckDB's powerful array functions on it.
-
-However, if a list of scalars is found under a key that is part of a larger object structure being flattened, a new table is created instead. For a key `rds-mysql` inside an `amazon-rds` object, this creates a new table `amazon_rds_rds_mysql`.
-
-### 4. Arrays of Objects
-
-```yaml
-# Input YAML
-services:
-  - name: web
-    port: 80
-    env:
-      - key: NODE_ENV
-        value: production
-  - name: api
-    port: 3000
-    env:
-      - key: DEBUG
-        value: true
-```
-
-Becomes multiple related tables:
-```sql
+-- Main services table (includes flattened single-key data)
 CREATE TABLE services (
-    _id VARCHAR,
-    name VARCHAR,
-    port INTEGER
+    web_image VARCHAR,          -- Direct field
+    web_config_port BIGINT,     -- Flattened from config (1 key)
+    web_resources_cpu VARCHAR,  -- Also flattened for data preservation
+    web_resources_memory VARCHAR
 );
 
-CREATE TABLE services_env (
-    service_id VARCHAR,  -- References services._id
-    key VARCHAR,
-    value VARCHAR
+-- Separate table for multi-key dictionary
+CREATE TABLE services_web_resources (
+    cpu VARCHAR,
+    memory VARCHAR
 );
 ```
 
-### 5. Mixed Content
+## Heuristics in Practice
+
+### Example 1: Kubernetes Deployment
 
 ```yaml
-# Input YAML
-spec:
+apiVersion: apps/v1
+kind: Deployment
+metadata:                        # depth 0, 3 keys → separate table
+  name: nginx
+  namespace: default
+  labels:                        # depth 1, 1 key → flattened
+    app: nginx
+spec:                            # depth 0, 3 keys → separate table  
   replicas: 3
-  containers:
-    - name: nginx
-      image: nginx:latest
-      ports:
-        - containerPort: 80
-  volumes:
-    data: /var/lib/data
+  selector:                      # depth 1, 1 key → flattened
+    matchLabels:                 # depth 2, 1 key → flattened
+      app: nginx
+  template:                      # depth 1, 2 keys → separate table
+    metadata:                    # depth 2, 1 key → flattened
+      labels:                    # depth 3, 1 key → flattened
+        app: nginx
+    spec:                        # depth 2, 1 key → flattened (but contains containers)
+      containers:                # depth 3, array → separate table
+      - name: nginx
+        image: nginx:1.14.2
 ```
 
-Becomes:
-```sql
-CREATE TABLE spec (
-    replicas INTEGER,
-    volumes_data VARCHAR
-);
+**Resulting Tables**:
+- `metadata` - deployment metadata 
+- `spec` - deployment spec with flattened selector
+- `spec_template_spec_containers` - container array becomes table
 
-CREATE TABLE spec_containers (
-    _id VARCHAR,
-    name VARCHAR,
-    image VARCHAR
-);
-
-CREATE TABLE spec_containers_ports (
-    container_id VARCHAR,  -- References spec_containers._id
-    containerPort INTEGER
-);
-```
-
-## Special Cases
-
-### 1. Environment Variables
+### Example 2: Docker Compose with Deep Nesting
 
 ```yaml
-environment:
-  NODE_ENV: production
-  DEBUG: "true"
-  PORT: "3000"
+services:
+  web:                          # depth 0 → creates services_web table
+    image: nginx
+    environment:                # depth 1, many keys → separate table  
+      NODE_ENV: production
+      DEBUG: false
+      LOG_LEVEL: info
+    volumes:                    # depth 1, array → separate table
+      - "./app:/app"
+    networks:                   # depth 1, 1 key → flattened
+      default:
+        aliases: ["web"]
 ```
 
-Becomes:
-```sql
-CREATE TABLE environment (
-    key VARCHAR,
-    value VARCHAR
-);
-```
+**Tables Created**:
+- `services` - main table with flattened data
+- `services_web` - web service details
+- `services_web_environment` - environment variables (3+ keys)
+- `services_web_volumes` - volume mounts (array)
+- Networks data flattened into `services_web` as `networks_default_aliases`
 
-### 2. Port Mappings
+### Example 3: Configuration with Deep Nesting
 
 ```yaml
-ports:
-  - "3000:80"
-  - "8080"
+application:
+  database:                     # depth 1, 4 keys → separate table
+    primary:                    # depth 2, 3 keys → separate table  
+      host: db1.example.com
+      port: 5432
+      ssl: true
+    replica:                    # depth 2, 2 keys → separate table
+      host: db2.example.com  
+      port: 5432
+    connection:                 # depth 2, 1 key → flattened
+      timeout: 30
+  cache:                        # depth 1, 1 key → flattened
+    redis:                      # depth 2, 2 keys → would create table, but flattens due to parent
+      host: cache.example.com
+      port: 6379
 ```
 
-Becomes:
-```sql
-CREATE TABLE ports (
-    value VARCHAR,  -- Keeps original format
-    host_port INTEGER,  -- Parsed value
-    container_port INTEGER  -- Parsed value
-);
-```
+**Tables Created**:
+- `application` - main table with flattened cache and connection data
+- `application_database` - database configuration
+- `application_database_primary` - primary database details  
+- `application_database_replica` - replica database details
 
-### 3. Volume Mounts
+## Tuning the Heuristics
+
+### When MAX_DEPTH = 5 Might Be Too Low
+
+If you have legitimate deeply nested structures that you want as separate tables:
 
 ```yaml
-volumes:
-  - ./data:/var/lib/data:ro
-  - /tmp:/tmp
+# Very deep but logical structure
+organization:
+  departments:
+    engineering:
+      teams:
+        backend:
+          services:
+            api:              # This is at depth 5
+              config:         # This gets flattened due to depth limit
+                port: 8080
 ```
 
-Becomes:
-```sql
-CREATE TABLE volumes (
-    value VARCHAR,  -- Original string
-    source VARCHAR,  -- Parsed source path
-    target VARCHAR,  -- Parsed target path
-    mode VARCHAR    -- Parsed mode (if any)
-);
-```
+**Workaround**: Restructure your YAML to be less deeply nested, or accept that the deepest levels will be flattened.
 
-## Naming Conventions
+### When MIN_DICT_SIZE_FOR_TABLE = 2 Might Be Too Low
 
-1. **Table Names**:
-   - Root level: `root`
-   - Top-level objects: Object name (e.g., `services`)
-   - Nested objects: Parent_Child (e.g., `spec_containers`)
+If you want even single-key dictionaries to become tables:
 
-2. **Column Names**:
-   - Simple fields: Field name (e.g., `name`)
-   - Nested fields: Parent_Child (e.g., `resources_limits_cpu`)
-   - **Special Character Sanitization**: Any characters that are not valid in unquoted SQL identifiers (like spaces, periods, and hyphens) are replaced with underscores. For example, a YAML key `service-name` becomes the column `service_name`.
-   - Case is preserved.
-
-3. **Special Columns**:
-   - `_id`: Primary key for child tables
-   - `parent_id`: Reference to parent table
-   - `value`: For simple array items
-
-## Metadata Generation
-
-### 1. Table Information
-
-```sql
-CREATE TABLE __tables (
-    table_name VARCHAR,
-    parent_table VARCHAR,
-    type VARCHAR,  -- 'root', 'section', 'child'
-    description VARCHAR
-);
-```
-
-### 2. Relationships
-
-```sql
-CREATE TABLE __relationships (
-    source_table VARCHAR,
-    target_table VARCHAR,
-    relationship_type VARCHAR  -- 'parent-child', 'reference'
-);
-```
-
-## Best Practices
-
-### 1. Structure Your YAML
-
-Good:
 ```yaml
 service:
-  name: api
-  config:
-    port: 3000
-    env: production
+  config:          # Only 1 key, but you want it as a separate table
+    port: 8080
 ```
 
-Avoid:
+**Current Behavior**: Creates `service_config_port` column
+**Alternative**: YamlQL prioritizes practical table structures over perfect hierarchical representation
+
+## Data Preservation Guarantee
+
+**Key Promise**: Regardless of these heuristics, YamlQL preserves ALL your data.
+
+Even when a nested dictionary gets its own table due to the heuristics, its scalar fields are ALSO flattened into the parent table:
+
 ```yaml
-service-name: api
-service-config-port: 3000
-service-config-env: production
+services:
+  web:
+    database:                   # 2 keys → gets separate table
+      host: localhost
+      port: 5432
 ```
 
-### 2. Use Consistent Types
+**Results in BOTH**:
+1. `services` table with columns: `web_database_host`, `web_database_port`
+2. `services_web_database` table with columns: `host`, `port`
 
-Good:
-```yaml
-port: 3000  # Number
-debug: true  # Boolean
-name: "api"  # String
+This ensures you can query the data either way without losing information.
+
+## Debugging Heuristic Decisions
+
+### Use yamlql discover
+
+To understand how heuristics affected your YAML:
+
+```bash
+yamlql discover -f your-file.yml
 ```
 
-Avoid:
-```yaml
-port: "3000"  # String that should be number
-debug: "true"  # String that should be boolean
+This shows you exactly which tables were created and what got flattened.
+
+### Check Table Patterns
+
+Look for these patterns to understand heuristic decisions:
+
+- **Flattened data**: Columns with underscores (e.g., `config_port`, `metadata_labels_app`)
+- **Separate tables**: Tables with hierarchical names (e.g., `services_web`, `spec_template_spec_containers`)
+- **Depth-limited flattening**: Very long column names indicating deep nesting was flattened
+
+### Example Analysis
+
+```bash
+yamlql discover -f complex-k8s.yml
 ```
 
-### 3. Array Handling
+Output:
+```
+╭─────── metadata ───────╮
+│ name: VARCHAR          │
+│   labels_app: VARCHAR  │  ← Single-key 'labels' was flattened
+╰────────────────────────╯
 
-Good:
-```yaml
-ports:
-  - containerPort: 80
-    hostPort: 8080
+╭─── spec_template_spec_containers ───╮  ← Deep nesting created long table name
+│ name: VARCHAR                       │
+│   resources_limits_cpu: VARCHAR     │  ← But resources were flattened due to depth
+╰─────────────────────────────────────╯
 ```
 
-Avoid:
-```yaml
-ports: "80:8080, 443:8443"  # String that should be structured
-```
-
-## Common Issues
-
-### 1. Type Inference
-
-YamlQL tries to infer types:
-- Numbers → INTEGER/FLOAT
-- true/false → BOOLEAN
-- Everything else → VARCHAR
-
-### 2. Array Flattening
-
-Arrays are handled based on content:
-- Scalar arrays → Single table with `value` column
-- Object arrays → Separate tables with relationships
-- Mixed arrays → Preserved as JSON strings
-
-### 3. Name Collisions
-
-Column names from nested structures:
-- Use parent prefix to avoid collisions
-- Special characters replaced with underscore
-- Case sensitivity preserved
+This tells you:
+- `labels` had only 1 key, so was flattened into `metadata`
+- `containers` was deep enough that `resources` got flattened instead of becoming a separate table
 
 ## Related Topics
 
-- [Metadata Tables](metadata-tables.md)
-- [Relationships](relationships.md)
 - [SQL Query Command](../commands/sql.md)
-- [Complex YAML Guide](../guides/complex-yaml.md) 
+- [Docker Compose Guide](../guides/docker-compose.md)
+- [Kubernetes Guide](../guides/kubernetes.md) 

@@ -1,0 +1,266 @@
+apiVersion: apps/v1
+kind: service
+metadata:
+  name: name of the service
+  project_name: <project_name>
+  tags:
+  - account_name: <account name>
+  - category: <category>
+  version: <version>
+  description: <description>
+spec:
+  cloud: aws
+  platform_variant:
+    asg:
+      current_version: <current_version>
+      versions:
+      - <version>
+      patterns:
+        single_node:
+          description: Single_node EC2 instances with Auto Scaling group provide basic
+            high availability for non_production workloads with low traffic. Suitable
+            for dev/test environments.
+          postures_applicable:
+            network_vpc:
+            - subnet_placement_of_service
+            - Network ACLs
+            - Security Groups
+            - Outbound Internet
+            - Private IP Only (No Public IP)
+            endpoint_vpc:
+            - service_exposure
+            - public_exposure_load_balancer
+            - Network ACLs
+            - Security Groups
+            - public_exposure_subnetplacement_load_balancer
+            - public_exposure_cdn
+            - public_exposure_apigw
+            network_managedservices:
+            - service_access_to_vpc
+            - endpoint_interface_rules
+            - Network ACLs
+            - Security Groups
+            endpoint_managedservices:
+            - public_exposure_apigw
+            - public_exposure_cdn
+            endpoint_security:
+            - public_exposure_ssl_certificate
+            - public_exposure_waf
+            storage:
+            - block_storage_access_to_service
+            - file_storage_access_to_service
+            - object_storage_access_to_service
+            storage_security:
+            - block_storage_encryption_at_rest
+            - file_storage_encryption_at_rest
+            - file_storage_security_group
+            - file_storage_nacl
+            - object_storage_encryption_at_rest
+            storage_lifecycle:
+            - block_storage_backup
+            - block_storage_backup_retention
+            - efs_storage_backup
+            - efs_storage_backup_retention
+            - s3_lifecycle_policies
+            storage_replication:
+            - block_storage_snapshot_region_replication
+            - file_storage_region_replication
+            - object_storage_region_replication
+            resiliency:
+            - autoscaling
+            - autoscaling_lb_association
+            - dr_strategy
+            performance:
+            - data_caching_databases
+            management:
+            - tagging_policy
+            - naming_convention
+            integration:
+            - upstream_integration_events
+            - downstream_integration_events
+            - upstream_integration_cross_account_events
+            - downstream_integration_cross_account_events
+            operations_and_observability:
+            - logging
+            - monitoring
+            - traces
+            - patching_upgrade_strategy
+            compliance_and_governance:
+            - audit_logging
+            - config_management
+            security:
+            - vulnerability_management
+            - secret_management
+            policy:
+            - service_policies
+            - resource_policies
+            - user_policy
+            - scp_policy
+            - boundary_policy
+        blue_green_with_asg:
+          description: Blue_green with Auto Scaling groups enables zero_downtime deployments
+            by provisioning parallel environments and swapping traffic. Suitable for
+            highly available, scalable workloads aligned with AWS best practices.
+          postures_applicable:
+            network_vpc:
+            - subnet_placement_of_service
+            - Network ACLs
+            - Security Groups
+            - Outbound Internet
+            - Private IP Only (No Public IP)
+            endpoint_vpc:
+            - service_exposure
+            - public_exposure_load_balancer
+            - Network ACLs
+            - Security Groups
+            - public_exposure_subnetplacement_load_balancer
+            - public_exposure_cdn
+            - public_exposure_apigw
+            network_managedservices:
+            - service_access_to_vpc
+            - endpoint_interface_rules
+            - Network ACLs
+            - Security Groups
+            endpoint_managedservices:
+            - public_exposure_apigw
+            - public_exposure_cdn
+            endpoint_security:
+            - public_exposure_ssl_certificate
+            - public_exposure_waf
+            storage:
+            - block_storage_access_to_service
+            - file_storage_access_to_service
+            - object_storage_access_to_service
+            storage_security:
+            - block_storage_encryption_at_rest
+            - file_storage_encryption_at_rest
+            - file_storage_security_group
+            - file_storage_nacl
+            - object_storage_encryption_at_rest
+            storage_lifecycle:
+            - block_storage_backup
+            - block_storage_backup_retention
+            - efs_storage_backup
+            - efs_storage_backup_retention
+            - s3_lifecycle_policies
+            storage_replication:
+            - block_storage_snapshot_region_replication
+            - file_storage_region_replication
+            - object_storage_region_replication
+            resiliency:
+            - autoscaling
+            - autoscaling_lb_association
+            - dr_strategy
+            performance:
+            - data_caching_databases
+            management:
+            - tagging_policy
+            - naming_convention
+            integration:
+            - upstream_integration_events
+            - downstream_integration_events
+            - upstream_integration_cross_account_events
+            - downstream_integration_cross_account_events
+            operations_and_observability:
+            - logging
+            - monitoring
+            - traces
+            - patching_upgrade_strategy
+            compliance_and_governance:
+            - audit_logging
+            - config_management
+            security:
+            - vulnerability_management
+            - secret_management
+            policy:
+            - service_policies
+            - resource_policies
+            - user_policy
+            - scp_policy
+            - boundary_policy
+    standalone:
+      current_version: <current_version>
+      versions:
+      - <version>
+      patterns:
+        single_node:
+          description: Suitable for single_instance workloads with low_to_moderate
+            traffic. Aligns with high availability and fault tolerance best practices
+            for non_critical systems.
+          postures_applicable:
+            network_vpc:
+            - subnet_placement_of_service
+            - Network ACLs
+            - Security Groups
+            - Outbound Internet
+            - Private IP Only (No Public IP)
+            endpoint_vpc:
+            - service_exposure
+            - public_exposure_load_balancer
+            - Network ACLs
+            - Security Groups
+            - public_exposure_subnetplacement_load_balancer
+            - public_exposure_cdn
+            - public_exposure_apigw
+            network_managedservices:
+            - service_access_to_vpc
+            - endpoint_interface_rules
+            - Network ACLs
+            - Security Groups
+            endpoint_managedservices:
+            - public_exposure_apigw
+            - public_exposure_cdn
+            endpoint_security:
+            - public_exposure_ssl_certificate
+            - public_exposure_waf
+            storage:
+            - block_storage_access_to_service
+            - file_storage_access_to_service
+            - object_storage_access_to_service
+            storage_security:
+            - block_storage_encryption_at_rest
+            - file_storage_encryption_at_rest
+            - file_storage_security_group
+            - file_storage_nacl
+            - object_storage_encryption_at_rest
+            storage_lifecycle:
+            - block_storage_backup
+            - block_storage_backup_retention
+            - efs_storage_backup
+            - efs_storage_backup_retention
+            - s3_lifecycle_policies
+            storage_replication:
+            - block_storage_snapshot_region_replication
+            - file_storage_region_replication
+            - object_storage_region_replication
+            resiliency:
+            - autoscaling
+            - autoscaling_lb_association
+            - dr_strategy
+            performance:
+            - data_caching_databases
+            management:
+            - tagging_policy
+            - naming_convention
+            integration:
+            - upstream_integration_events
+            - downstream_integration_events
+            - upstream_integration_cross_account_events
+            - downstream_integration_cross_account_events
+            operations_and_observability:
+            - logging
+            - monitoring
+            - traces
+            - patching_upgrade_strategy
+            compliance_and_governance:
+            - audit_logging
+            - config_management
+            security:
+            - vulnerability_management
+            - secret_management
+            policy:
+            - service_policies
+            - resource_policies
+            - user_policy
+            - scp_policy
+            - boundary_policy

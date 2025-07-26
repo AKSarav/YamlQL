@@ -23,287 +23,299 @@ services:
       POSTGRES_USER: admin
 ```
 
-Tables Created:
-```sql
--- Root level
-SELECT * FROM root;  -- Contains version
-
--- Services
-SELECT * FROM services;  -- List of services
-
--- Service details
-SELECT * FROM services_web;    -- Web service config
-SELECT * FROM services_db;     -- DB service config
+Tables Created by YamlQL:
+```bash
+yamlql discover -f docker-compose.yml
 ```
+
+Results in tables like:
+- `services` - Flattened overview of all services
+- `services_web` - Detailed web service configuration  
+- `services_db` - Detailed db service configuration
+- `services_web_ports` - Web service port mappings
+- `services_db_environment` - Database environment variables
 
 ## Common Queries
 
 ### 1. Service Discovery
 
 ```sql
--- List all services
-SELECT display_name, image 
-FROM __services;
+-- List all service images from the main services table
+SELECT web_image, db_image 
+FROM services;
 
--- Find services by image
-SELECT display_name 
-FROM __services 
-WHERE image LIKE '%postgres%';
+-- Find services by image type
+SELECT image 
+FROM services_web 
+WHERE image LIKE '%nginx%';
 
--- Get service ports
-SELECT 
-    s.display_name as service,
-    p.value as port_mapping
-FROM __services s
-JOIN ports p ON true
-WHERE p.value IS NOT NULL;
+-- Get web service ports
+SELECT value as port_mapping
+FROM services_web_ports;
 ```
 
 ### 2. Environment Variables
 
 ```sql
--- List all environment variables
-SELECT 
-    s.display_name as service,
-    e.key,
-    e.value
-FROM __services s
-JOIN environment e ON true
-ORDER BY service;
+-- List database environment variables
+SELECT POSTGRES_DB, POSTGRES_USER
+FROM services_db;
 
--- Find specific configs
-SELECT display_name, environment_POSTGRES_DB
-FROM services
-WHERE environment_POSTGRES_DB IS NOT NULL;
+-- Check environment configuration from detail table
+SELECT *
+FROM services_db_environment;
+
+-- Find services with specific environment settings
+SELECT image
+FROM services_db
+WHERE environment_POSTGRES_DB = 'myapp';
 ```
 
 ### 3. Volume Mounts
 
 ```sql
--- List all volume mounts
-SELECT 
-    s.display_name as service,
-    v.source,
-    v.target
-FROM __services s
-JOIN volumes v ON true;
+-- List volume mounts for web service
+SELECT value as volume_mount
+FROM services_web_volumes;
 
--- Find named volumes
-SELECT DISTINCT volume_name
-FROM volumes
-WHERE volume_name NOT LIKE './%';
+-- Find services with bind mounts
+SELECT image
+FROM services_web
+WHERE EXISTS (
+    SELECT 1 FROM services_web_volumes v 
+    WHERE v.value LIKE './%'
+);
 ```
 
 ## Advanced Use Cases
 
-### 1. Network Analysis
+### 1. Multi-Service Analysis
 
 ```sql
--- Find exposed ports
-SELECT 
-    s.display_name as service,
-    p.host_port,
-    p.container_port
-FROM __services s
-JOIN ports p ON true
-WHERE p.host_port IS NOT NULL;
-
--- Services in networks
-SELECT 
-    s.display_name as service,
-    n.value as network
-FROM __services s
-JOIN networks n ON true;
-```
-
-### 2. Dependency Mapping
-
-```sql
--- Show service dependencies
-SELECT 
-    s.display_name as service,
-    d.value as depends_on
-FROM __services s
-JOIN depends_on d ON true
-ORDER BY service;
-
--- Build dependency tree
-WITH RECURSIVE deps AS (
-    -- Base services (no dependencies)
-    SELECT 
-        display_name as service,
-        0 as level
-    FROM __services s
-    WHERE NOT EXISTS (
-        SELECT 1 FROM depends_on d
-        WHERE d.service_id = s._id
-    )
-    
-    UNION ALL
-    
-    -- Services that depend on others
-    SELECT 
-        s.display_name,
-        d.level + 1
-    FROM __services s
-    JOIN depends_on dep ON dep.service_id = s._id
-    JOIN deps d ON d.service = dep.value
-)
-SELECT 
-    REPEAT('  ', level) || service as dependency_tree,
-    level
-FROM deps
-ORDER BY level, service;
-```
-
-### 3. Resource Usage
-
-```sql
--- Memory limits
-SELECT 
-    display_name as service,
-    deploy_resources_limits_memory as memory_limit,
-    deploy_resources_reservations_memory as memory_reservation
-FROM __services
-WHERE deploy_resources_limits_memory IS NOT NULL
-   OR deploy_resources_reservations_memory IS NOT NULL;
-
--- CPU allocation
-SELECT 
-    display_name as service,
-    deploy_resources_limits_cpus as cpu_limit,
-    deploy_resources_reservations_cpus as cpu_reservation
-FROM __services
-WHERE deploy_resources_limits_cpus IS NOT NULL
-   OR deploy_resources_reservations_cpus IS NOT NULL;
-```
-
-## Common Patterns
-
-### 1. Service Templates
-
-```sql
--- Find services using the same image
-SELECT 
-    image,
-    STRING_AGG(display_name, ', ') as services,
-    COUNT(*) as count
-FROM __services
-GROUP BY image
-HAVING COUNT(*) > 1;
-
 -- Compare service configurations
 SELECT 
-    s1.display_name as service1,
-    s2.display_name as service2
-FROM __services s1
-JOIN __services s2 
-    ON s1.image = s2.image 
-    AND s1.display_name < s2.display_name;
+    'web' as service_name, 
+    web_image as image,
+    ARRAY_LENGTH(web_ports) as port_count
+FROM services
+UNION ALL
+SELECT 
+    'db' as service_name,
+    db_image as image, 
+    0 as port_count
+FROM services;
+
+-- Find services with port mappings
+SELECT 
+    CASE 
+        WHEN web_ports IS NOT NULL THEN 'web'
+        WHEN db_ports IS NOT NULL THEN 'db'
+    END as service_with_ports
+FROM services
+WHERE web_ports IS NOT NULL OR db_ports IS NOT NULL;
 ```
 
-### 2. Health Checks
+### 2. Resource and Configuration Analysis
 
 ```sql
--- List health check configurations
+-- Analyze environment variable count by service
 SELECT 
-    display_name as service,
-    healthcheck_test,
-    healthcheck_interval,
-    healthcheck_timeout
-FROM __services
-WHERE healthcheck_test IS NOT NULL;
+    'db' as service,
+    COUNT(*) as env_var_count
+FROM services_db_environment
+UNION ALL
+SELECT 
+    'web' as service,
+    0 as env_var_count;
 
--- Find services without health checks
-SELECT display_name
-FROM __services s
-WHERE NOT EXISTS (
-    SELECT 1 FROM healthcheck h
-    WHERE h.service_id = s._id
-);
+-- Check for exposed ports across all services
+SELECT 
+    s.web_image as image,
+    p.value as port
+FROM services s
+JOIN services_web_ports p ON true
+WHERE s.web_image IS NOT NULL;
 ```
 
-### 3. Volume Management
+### 3. Dependency and Network Analysis
 
 ```sql
--- Named volumes
-SELECT 
-    volume_name,
-    COUNT(*) as usage_count
-FROM volumes
-WHERE volume_name NOT LIKE './%'
-GROUP BY volume_name;
+-- Find services that depend on databases
+SELECT web_image as dependent_service
+FROM services 
+WHERE db_image LIKE '%postgres%' OR db_image LIKE '%mysql%';
 
--- Bind mounts
+-- Analyze service isolation (services without port exposure)
+SELECT db_image as isolated_service
+FROM services
+WHERE db_ports IS NULL AND db_image IS NOT NULL;
+```
+
+## Complex Multi-Service Examples
+
+### Large Docker Compose File
+
+```yaml
+# docker-compose-complex.yml
+version: '3.8'
+services:
+  frontend:
+    image: react-app:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+  backend:
+    image: node-api:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://user:pass@db:5432/app
+    depends_on:
+      - db
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: user
+```
+
+Complex Queries:
+```sql
+-- Map service dependencies
 SELECT 
-    s.display_name as service,
-    v.source,
-    v.target,
-    v.mode
-FROM __services s
-JOIN volumes v ON true
-WHERE v.source LIKE './%';
+    backend_image as service,
+    'depends on database' as dependency_info
+FROM services 
+WHERE backend_environment_DATABASE_URL LIKE '%postgres%';
+
+-- Find all exposed ports
+SELECT 
+    frontend_ports as frontend_ports,
+    backend_ports as backend_ports
+FROM services
+WHERE frontend_ports IS NOT NULL OR backend_ports IS NOT NULL;
+
+-- Service dependency chain analysis
+SELECT 
+    CASE 
+        WHEN frontend_image IS NOT NULL THEN 'frontend -> backend -> db'
+        WHEN backend_image IS NOT NULL THEN 'backend -> db'
+        WHEN db_image IS NOT NULL THEN 'db (base service)'
+    END as dependency_chain
+FROM services;
 ```
 
 ## Best Practices
 
-### 1. Service Discovery
+### 1. Schema Discovery First
 
-Always start with metadata:
-```sql
--- Get service overview
-SELECT 
-    display_name,
-    image,
-    (SELECT COUNT(*) FROM ports p WHERE p.service_id = s._id) as port_count,
-    (SELECT COUNT(*) FROM volumes v WHERE v.service_id = s._id) as volume_count
-FROM __services s;
+Always start with understanding your table structure:
+```bash
+yamlql discover -f docker-compose.yml
 ```
 
-### 2. Environment Variables
+This shows you:
+- Which services became separate tables
+- How environment variables are structured
+- Where arrays like ports and volumes are stored
 
-Handle environment variables carefully:
+### 2. Working with Flattened Data
+
+YamlQL flattens service configurations into the main `services` table:
 ```sql
--- Check for sensitive info
+-- Access flattened service data
 SELECT 
-    s.display_name as service,
-    e.key
-FROM __services s
-JOIN environment e ON true
-WHERE LOWER(e.key) LIKE '%password%'
-   OR LOWER(e.key) LIKE '%secret%'
-   OR LOWER(e.key) LIKE '%key%';
+    web_image,
+    web_ports,
+    db_image, 
+    db_environment_POSTGRES_DB
+FROM services;
 ```
 
-### 3. Version Compatibility
+### 3. Querying Detail Tables
 
-Check version-specific features:
+Use detail tables for comprehensive service analysis:
 ```sql
--- Get compose version
-SELECT version FROM root;
+-- Get complete service configuration
+SELECT * FROM services_web;
+SELECT * FROM services_db;
 
--- Find version-specific configs
-SELECT display_name
-FROM __services
-WHERE deploy_resources_limits_cpus IS NOT NULL  -- v3+ feature
+-- Analyze specific aspects
+SELECT * FROM services_web_ports;
+SELECT * FROM services_db_environment;
+```
+
+### 4. Handling Arrays
+
+```sql
+-- Unnest port arrays from detail tables
+SELECT value as individual_port
+FROM services_web_ports;
+
+-- Check array lengths in flattened data
+SELECT 
+    web_image,
+    ARRAY_LENGTH(web_ports) as port_count
+FROM services
+WHERE web_ports IS NOT NULL;
 ```
 
 ## Troubleshooting
 
 ### 1. Missing Services
-- Check service names
-- Verify YAML structure
-- Look for syntax errors
+If services don't appear as expected:
+- Check for YAML syntax errors
+- Verify service names are valid
+- Use `yamlql discover` to see actual table structure
 
-### 2. Port Mapping
-- Check port format
-- Verify host/container ports
-- Handle port ranges
+### 2. Environment Variables
+Environment variables appear in multiple places:
+- Flattened in main `services` table as `service_environment_KEY`
+- Detailed in `services_servicename_environment` tables
 
-### 3. Volume Issues
-- Verify volume syntax
-- Check named volumes
-- Handle relative paths
+### 3. Port and Volume Mapping
+- Ports appear as arrays in flattened columns and as separate tables
+- Volume mounts are stored as arrays and can be queried with UNNEST
+
+## Integration Examples
+
+### CI/CD Pipeline Analysis
+
+```sql
+-- Find services that expose public ports
+SELECT 
+    web_image as public_service,
+    web_ports as exposed_ports
+FROM services 
+WHERE web_ports IS NOT NULL;
+
+-- Check for hardcoded credentials (security audit)
+SELECT 
+    'Database service has hardcoded password' as security_issue
+FROM services_db_environment
+WHERE POSTGRES_PASSWORD IS NOT NULL;
+```
+
+### Infrastructure Planning
+
+```sql
+-- Resource requirements analysis
+SELECT 
+    COUNT(DISTINCT web_image) + 
+    COUNT(DISTINCT db_image) as total_unique_images
+FROM services;
+
+-- Network topology mapping
+SELECT 
+    CASE 
+        WHEN web_ports IS NOT NULL THEN 'public-facing'
+        ELSE 'internal'
+    END as service_type,
+    COUNT(*) as service_count
+FROM services
+GROUP BY service_type;
+```
 
 ## Related Topics
 

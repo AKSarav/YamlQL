@@ -37,11 +37,31 @@ spec:
         - containerPort: 80
 ```
 
+Discover the schema:
+```bash
+yamlql discover -f deployment.yml
+```
+
+Typical tables created:
+- `metadata` - Deployment metadata (name, namespace, labels)
+- `spec` - Deployment specification (replicas, selector)
+- `spec_template_spec_containers` - Container definitions with resources
+- `spec_template_spec_containers_ports` - Container port configurations
+
 Common Queries:
 ```sql
+-- Get deployment metadata
+SELECT name, namespace 
+FROM metadata;
+
+-- Get replica count
+SELECT replicas 
+FROM spec;
+
 -- Get container resource limits
 SELECT 
     name,
+    image,
     resources_limits_cpu,
     resources_limits_memory
 FROM spec_template_spec_containers;
@@ -50,11 +70,6 @@ FROM spec_template_spec_containers;
 SELECT name, image 
 FROM spec_template_spec_containers 
 WHERE image LIKE '%nginx%';
-
--- Get replica counts
-SELECT name, spec_replicas 
-FROM root 
-JOIN spec ON true;
 ```
 
 ### 2. Services
@@ -65,6 +80,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nginx-service
+  namespace: default
 spec:
   selector:
     app: nginx
@@ -76,18 +92,23 @@ spec:
 
 Common Queries:
 ```sql
--- List service ports
-SELECT 
-    metadata_name as service,
-    p.port,
-    p.targetPort
-FROM root
-JOIN spec_ports p ON true;
+-- Get service metadata
+SELECT name, namespace
+FROM metadata;
+
+-- Get service type and selector
+SELECT type, selector_app
+FROM spec;
+
+-- List service ports (if stored as separate table)
+SELECT port, targetPort
+FROM spec_ports;
 
 -- Find services by type
-SELECT metadata_name 
-FROM root 
-WHERE spec_type = 'ClusterIP';
+SELECT name 
+FROM metadata m
+JOIN spec s ON true
+WHERE s.type = 'ClusterIP';
 ```
 
 ### 3. ConfigMaps
@@ -98,221 +119,330 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config
+  namespace: default
 data:
-  database.host: db.example.com
-  database.port: "5432"
-  log.level: debug
+  database_url: postgresql://localhost:5432/myapp
+  redis_url: redis://localhost:6379
+  feature_flags: |
+    debug=true
+    logging=verbose
 ```
 
 Common Queries:
 ```sql
--- Get all config values
-SELECT key, value 
+-- Get ConfigMap metadata
+SELECT name, namespace
+FROM metadata;
+
+-- Access configuration data
+SELECT database_url, redis_url, feature_flags
 FROM data;
 
--- Find specific settings
-SELECT value 
-FROM data 
-WHERE key LIKE 'database.%';
+-- Find ConfigMaps with specific settings
+SELECT name
+FROM metadata m
+JOIN data d ON true
+WHERE d.database_url LIKE '%postgresql%';
 ```
 
-## Common Use Cases
+## Advanced Queries
 
-### 1. Resource Management
+### 1. Resource Analysis
 
 ```sql
--- Find pods with high resource requests
+-- Find containers without resource limits
+SELECT name, image
+FROM spec_template_spec_containers 
+WHERE resources_limits_cpu IS NULL 
+   OR resources_limits_memory IS NULL;
+
+-- Compare requests vs limits
 SELECT 
-    metadata_name as pod,
-    c.name as container,
-    c.resources_requests_cpu,
-    c.resources_requests_memory
-FROM root
-JOIN spec_template_spec_containers c ON true
-WHERE CAST(REPLACE(c.resources_requests_cpu, 'm', '') AS INTEGER) > 500;
+    name,
+    resources_requests_cpu,
+    resources_limits_cpu,
+    resources_requests_memory,
+    resources_limits_memory
+FROM spec_template_spec_containers
+WHERE resources_limits_cpu IS NOT NULL;
+
+-- Aggregate resource usage across containers
+SELECT 
+    COUNT(*) as total_containers,
+    COUNT(DISTINCT image) as unique_images,
+    SUM(CASE WHEN resources_limits_cpu IS NOT NULL THEN 1 ELSE 0 END) as containers_with_limits
+FROM spec_template_spec_containers;
 ```
 
-### 2. Image Auditing
+### 2. Multi-Resource Analysis
+
+For multiple Kubernetes files, you can analyze patterns:
 
 ```sql
--- Find containers using latest tag
-SELECT 
-    metadata_name as deployment,
-    c.name as container,
-    c.image
-FROM root
-JOIN spec_template_spec_containers c ON true
-WHERE c.image LIKE '%:latest%';
+-- Find all deployments in specific namespace
+SELECT name 
+FROM metadata 
+WHERE namespace = 'production';
 
--- Group by image version
+-- Count replicas across all deployments
 SELECT 
-    REGEXP_EXTRACT(c.image, ':(.*?)$') as version,
-    COUNT(*) as count
+    m.name,
+    s.replicas
+FROM metadata m
+JOIN spec s ON true
+ORDER BY s.replicas DESC;
+
+-- Security analysis - find containers running as root
+SELECT name, image
 FROM spec_template_spec_containers c
-GROUP BY version;
+JOIN spec_template_spec s ON true
+WHERE s.securityContext_runAsUser = 0 
+   OR s.securityContext_runAsUser IS NULL;
 ```
 
-### 3. Network Analysis
+### 3. Label and Selector Queries
 
 ```sql
--- List all exposed ports
+-- Find resources with specific labels
+SELECT name
+FROM metadata
+WHERE labels_app = 'nginx';
+
+-- Match selectors to labels
 SELECT 
-    metadata_name as service,
-    p.port,
-    p.targetPort,
-    p.nodePort
-FROM root
-JOIN spec_ports p ON true
-WHERE spec_type = 'NodePort';
-
--- Find internal services
-SELECT metadata_name 
-FROM root 
-WHERE spec_type = 'ClusterIP';
+    m.name as deployment,
+    s.selector_app as selector
+FROM metadata m
+JOIN spec s ON true
+WHERE s.selector_app IS NOT NULL;
 ```
 
-## Multi-Resource Queries
+## Complex Scenarios
 
-### 1. Service-Deployment Matching
+### 1. Microservices Architecture Analysis
 
-```sql
--- Find services without matching deployments
-WITH service_selectors AS (
-    SELECT 
-        metadata_name as service,
-        spec_selector_app as app
-    FROM services
-),
-deployment_labels AS (
-    SELECT 
-        metadata_name as deployment,
-        spec_template_metadata_labels_app as app
-    FROM deployments
-)
-SELECT s.* 
-FROM service_selectors s
-LEFT JOIN deployment_labels d ON s.app = d.app
-WHERE d.app IS NULL;
+```yaml
+# Multiple services with different configurations
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    tier: frontend
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: web
+        image: frontend:v1.2.0
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+---
+apiVersion: apps/v1
+kind: Deployment  
+metadata:
+  name: backend
+  labels:
+    tier: backend
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: api
+        image: backend:v2.1.0
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
 ```
 
-### 2. ConfigMap Usage
-
+Analysis queries:
 ```sql
--- Find pods using configmaps
+-- Service tier analysis
 SELECT 
-    d.metadata_name as deployment,
-    v.configMap_name as configmap
-FROM root d
-JOIN spec_template_spec_volumes v ON true
-WHERE v.configMap_name IS NOT NULL;
+    labels_tier as tier,
+    COUNT(*) as deployment_count,
+    SUM(replicas) as total_replicas
+FROM metadata m
+JOIN spec s ON true
+GROUP BY labels_tier;
+
+-- Resource allocation by tier
+SELECT 
+    m.labels_tier as tier,
+    c.image,
+    c.resources_limits_cpu,
+    c.resources_limits_memory
+FROM metadata m
+JOIN spec s ON true
+JOIN spec_template_spec_containers c ON true
+ORDER BY m.labels_tier;
 ```
 
-### 3. Resource Relationships
+### 2. Version and Image Analysis
 
 ```sql
--- Show service to pod mappings
+-- Extract image versions
 SELECT 
-    s.metadata_name as service,
-    d.metadata_name as deployment
-FROM services s
-JOIN deployments d ON s.spec_selector_app = d.spec_template_metadata_labels_app;
+    name,
+    image,
+    REGEXP_EXTRACT(image, ':(.+)$') as version
+FROM spec_template_spec_containers;
+
+-- Find outdated images
+SELECT 
+    name,
+    image
+FROM spec_template_spec_containers
+WHERE image LIKE '%:v1.%' 
+   OR image LIKE '%:latest';
+
+-- Image security analysis
+SELECT 
+    image,
+    COUNT(*) as usage_count
+FROM spec_template_spec_containers
+GROUP BY image
+ORDER BY usage_count DESC;
+```
+
+### 3. Port and Network Configuration
+
+```sql
+-- Find all exposed ports
+SELECT 
+    c.name as container,
+    p.containerPort
+FROM spec_template_spec_containers c
+JOIN spec_template_spec_containers_ports p 
+  ON c.name = p.spec_template_spec_containers_name;
+
+-- Network policy analysis
+SELECT 
+    m.name,
+    s.type,
+    COUNT(p.port) as port_count
+FROM metadata m
+JOIN spec s ON true
+LEFT JOIN spec_ports p ON true
+GROUP BY m.name, s.type;
 ```
 
 ## Best Practices
 
-### 1. Use Metadata Tables
+### 1. Schema Discovery
 
-Always check available tables first:
-```sql
-SELECT table_name, type 
-FROM __tables 
-ORDER BY type;
+Always start by understanding the structure:
+```bash
+yamlql discover -f k8s-manifest.yml
 ```
 
-### 2. Handle Labels and Selectors
+Kubernetes manifests typically create:
+- `metadata` table for resource metadata
+- `spec` table for specifications
+- Nested tables for complex objects (containers, ports, volumes)
 
-Labels often need special handling:
+### 2. Joining Related Data
+
 ```sql
--- Find matching labels
-SELECT * 
-FROM metadata_labels l
-JOIN spec_selector_matchLabels s 
-  ON l.key = s.key 
-  AND l.value = s.value;
-```
-
-### 3. Resource Limits
-
-Convert resource values to comparable units:
-```sql
--- Standardize CPU units
+-- Join deployment metadata with container specs
 SELECT 
-    name,
-    CASE 
-        WHEN resources_limits_cpu LIKE '%m' 
-        THEN CAST(REPLACE(resources_limits_cpu, 'm', '') AS FLOAT) / 1000
-        ELSE CAST(resources_limits_cpu AS FLOAT)
-    END as cpu_cores
-FROM spec_template_spec_containers;
+    m.name as deployment,
+    m.namespace,
+    c.name as container,
+    c.image
+FROM metadata m
+JOIN spec_template_spec_containers c ON true;
+```
+
+### 3. Resource Validation
+
+```sql
+-- Check for required fields
+SELECT name
+FROM spec_template_spec_containers
+WHERE image IS NULL OR name IS NULL;
+
+-- Validate resource specifications
+SELECT name, image
+FROM spec_template_spec_containers
+WHERE resources_limits_memory IS NULL 
+  AND image NOT LIKE '%system%';
+```
+
+### 4. Multi-File Analysis
+
+When working with multiple files:
+```bash
+# Combine multiple manifests
+cat *.yaml | yamlql sql "SELECT COUNT(*) as total_resources FROM metadata"
 ```
 
 ## Common Patterns
 
-### 1. Finding Resources
+### 1. Health Check Analysis
 
 ```sql
--- By namespace
-SELECT metadata_name 
-FROM root 
-WHERE metadata_namespace = 'production';
-
--- By label
-SELECT metadata_name 
-FROM root 
-WHERE metadata_labels_environment = 'prod';
+-- Find containers without health checks
+SELECT name, image
+FROM spec_template_spec_containers c
+WHERE NOT EXISTS (
+    SELECT 1 FROM spec_template_spec_containers 
+    WHERE livenessProbe_httpGet_path IS NOT NULL
+);
 ```
 
-### 2. Resource Validation
+### 2. Security Compliance
 
 ```sql
--- Find missing resource limits
+-- Find containers running privileged
+SELECT name, image
+FROM spec_template_spec_containers
+WHERE securityContext_privileged = true;
+
+-- Check for non-root users
 SELECT 
-    metadata_name as deployment,
-    c.name as container
-FROM root
-JOIN spec_template_spec_containers c ON true
-WHERE c.resources_limits_cpu IS NULL
-   OR c.resources_limits_memory IS NULL;
+    name,
+    securityContext_runAsUser,
+    securityContext_runAsNonRoot
+FROM spec_template_spec_containers;
 ```
 
-### 3. Security Checks
+### 3. Resource Quotas
 
 ```sql
--- Find privileged containers
+-- Calculate total resource requests
 SELECT 
-    metadata_name as pod,
-    c.name as container
-FROM root
-JOIN spec_template_spec_containers c ON true
-WHERE c.securityContext_privileged = true;
+    SUM(CAST(REPLACE(resources_requests_cpu, 'm', '') AS INT)) as total_cpu_millicores,
+    COUNT(*) as container_count
+FROM spec_template_spec_containers
+WHERE resources_requests_cpu IS NOT NULL;
 ```
 
 ## Troubleshooting
 
 ### 1. Missing Tables
-- Check if resource exists in YAML
-- Verify resource structure
-- Look for empty sections
+If expected tables don't appear:
+- Check YAML syntax and structure
+- Verify resource definitions are complete
+- Use `yamlql discover` to see actual schema
 
-### 2. Label Queries
-- Use correct label path
-- Check for nested labels
-- Handle label arrays properly
+### 2. Complex Nested Objects
+For deeply nested Kubernetes objects:
+- Look for flattened columns with underscore separators
+- Check for separate tables created for arrays
+- Use table and list output formats to explore data
 
-### 3. Resource Values
-- Convert units appropriately
-- Handle null/missing values
-- Use proper type casting
+### 3. Multi-Document YAML
+Kubernetes files with multiple resources:
+- Each resource may create its own set of tables
+- Use metadata to distinguish between resources
+- Consider processing files separately if needed
 
 ## Related Topics
 

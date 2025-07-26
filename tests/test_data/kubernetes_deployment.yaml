@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment
+  labels:
+    app: test-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+    spec:
+      containers:
+      - name: test-container
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "0.5"
+            memory: "256Mi"
+        # Deeply nested custom configuration for testing
+        applicationConfig:
+          database:
+            primary:
+              connection:
+                host: "primary-db.example.com"
+                port: 5432
+                user: "admin"
+              tuning:
+                max_connections: 100
+                shared_buffers: "4GB"
+            replica:
+              connection:
+                host: "replica-db.example.com"
+                port: 5432
+                user: "readonly"
+          caching:
+            redis:
+              config:
+                host: "redis-cache.example.com"
+                port: 6379
+              eviction_policies:
+                - "volatile-lru"
+                - "allkeys-lfu"
+            memcached:
+              config:
+                host: "memcached.example.com"
+                port: 11211
+          featureFlags:
+            regional_rollout:
+              apac:
+                enabled: true
+                sample_rate: 0.5
+              emea:
+                enabled: false
+                sample_rate: 0.1
+              amer:
+                enabled: true
+                sample_rate: 1.0
+            global_rollout:
+              enabled: false
+      volumes:
+      - name: temp-storage
+        emptyDir: {} 
