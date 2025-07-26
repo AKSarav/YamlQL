@@ -1,6 +1,6 @@
 # Discover Command
 
-The `discover` command helps you understand the structure of your YAML file by showing available tables, their columns, and relationships.
+The `discover` command helps you understand the structure of your YAML file by showing available tables, their columns, and data types.
 
 ## Basic Usage
 
@@ -16,34 +16,28 @@ yamlql discover -f your-file.yml
 
 ## Understanding the Output
 
-The discover command output is organized into sections:
+The discover command shows you exactly what tables and columns YamlQL has created from your YAML structure.
 
-### 1. Metadata Tables
+### Table Display Format
 
-```
-Metadata Tables:
-╭────── __tables ──────╮
-│ table_name: VARCHAR  │
-│ parent_table: VARCHAR│
-│ type: VARCHAR        │
-╰──────────────────────╯
-
-╭──── __relationships ────╮
-│ source_table: VARCHAR  │
-│ target_table: VARCHAR  │
-╰────────────────────────╯
-```
-
-### 2. Data Tables
+Each table is displayed with its name and all available columns with their data types:
 
 ```
-Data Tables:
 ╭────── services ──────╮
-│ name: VARCHAR        │
-│ image: VARCHAR       │
-│ ports: VARCHAR[]     │
+│ web_image: VARCHAR   │
+│ web_ports: VARCHAR[] │
+│ db_image: VARCHAR    │
 ╰──────────────────────╯
 ```
+
+### Data Types
+
+YamlQL uses these DuckDB data types:
+- `VARCHAR` - String values
+- `BIGINT` - Integer numbers  
+- `DOUBLE` - Floating point numbers
+- `BOOLEAN` - True/false values
+- `VARCHAR[]` - Arrays of strings (all array elements converted to strings for type safety)
 
 ## Example Outputs
 
@@ -53,21 +47,34 @@ Data Tables:
 # docker-compose.yml
 version: '3.8'
 services:
-  postgres:
-    image: postgres:14
+  web:
+    image: nginx:latest
     ports:
-      - "5432:5432"
+      - "80:80"
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: myapp
 ```
 
-Discover output:
-```
-Metadata Tables:
-- __tables (Lists all available tables)
-- __relationships (Shows table relationships)
+Running `yamlql discover -f docker-compose.yml` shows:
 
-Data Tables:
-- root (version)
-- services (name, image, ports)
+```
+╭─────── services ───────╮
+│ web_image: VARCHAR     │
+│   web_ports: VARCHAR[] │
+│   db_image: VARCHAR    │
+╰────────────────────────╯
+╭───── services_web ─────╮
+│ image: VARCHAR         │
+╰────────────────────────╯
+╭─────────── services_db ────────────╮
+│ image: VARCHAR                     │
+│   environment_POSTGRES_DB: VARCHAR │
+╰────────────────────────────────────╯
+╭─ services_web_ports ─╮
+│ value: VARCHAR       │
+╰──────────────────────╯
 ```
 
 ### Kubernetes Deployment
@@ -78,143 +85,162 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx
+  namespace: default
 spec:
   replicas: 3
   template:
     spec:
       containers:
       - name: nginx
-        image: nginx
+        image: nginx:1.14.2
+        resources:
+          limits:
+            cpu: "200m"
+        ports:
+        - containerPort: 80
 ```
 
-Discover output:
+Running `yamlql discover -f deployment.yml` shows:
+
 ```
-Metadata Tables:
-- __tables
-- __relationships
-
-Data Tables:
-- root (apiVersion, kind)
-- metadata (name)
-- spec (replicas)
-- spec_template_spec_containers (name, image)
+╭────── metadata ──────╮
+│ name: VARCHAR        │
+│   namespace: VARCHAR │
+╰──────────────────────╯
+╭────── spec ──────╮
+│ replicas: BIGINT │
+╰──────────────────╯
+╭──── spec_template_spec_containers ────╮
+│ name: VARCHAR                         │
+│   image: VARCHAR                      │
+│   resources_limits_cpu: VARCHAR       │
+╰───────────────────────────────────────╯
+╭── spec_template_spec_containers_ports ──╮
+│ containerPort: BIGINT                   │
+╰─────────────────────────────────────────╯
 ```
 
-## Understanding Table Types
+### Complex Configuration
 
-### 1. Root Tables
-- Contains top-level scalar values
-- Named `root` by default
-- Example: `version`, `apiVersion`, `kind`
+```yaml
+# config.yml
+application:
+  name: user-service
+  database:
+    host: db.example.com
+    port: 5432
+  features:
+    - name: login
+      enabled: true
+    - name: signup
+      enabled: false
+```
 
-### 2. Section Tables
-- Created from top-level objects
-- Named after the section
-- Example: `services`, `metadata`, `spec`
+Running `yamlql discover -f config.yml` shows:
 
-### 3. Child Tables
-- Created from nested objects or arrays
-- Named with parent prefix
-- Example: `spec_template_spec_containers`
+```
+╭───────── application ──────────╮
+│ name: VARCHAR                  │
+│   database_host: VARCHAR       │
+│   database_port: BIGINT        │
+╰────────────────────────────────╯
+╭─ application_features ─╮
+│ name: VARCHAR          │
+│   enabled: BOOLEAN     │
+╰────────────────────────╯
+```
 
-### 4. Metadata Tables
-- Start with `__`
-- Provide schema information
-- Example: `__tables`, `__relationships`
+## Understanding Table Names
 
-## Using Discover Results
+YamlQL creates table names based on your YAML structure:
+
+### 1. Root-Level Objects
+Top-level keys in your YAML become table names:
+- `services` → `services` table
+- `metadata` → `metadata` table
+- `spec` → `spec` table
+
+### 2. Nested Objects
+Nested structures create separate tables with underscore-separated names:
+- `services.web` → `services_web` table
+- `spec.template.spec.containers` → `spec_template_spec_containers` table
+
+### 3. Arrays
+Arrays create separate tables for their contents:
+- `services.web.ports` → `services_web_ports` table
+- `spec.template.spec.containers.ports` → `spec_template_spec_containers_ports` table
+
+### 4. Flattened Columns
+Simple nested values become flattened columns in parent tables:
+- `database.host` → `database_host` column
+- `environment.POSTGRES_DB` → `environment_POSTGRES_DB` column
+
+## Using Discover Output
 
 ### 1. Planning Queries
 
-The discover output helps you:
-- Identify available tables
-- Understand column names and types
-- See relationships between tables
+Use the table and column information to write SQL queries:
 
-Example:
 ```bash
-# First discover the schema
-yamlql discover -f docker-compose.yml
-
-# Then write queries using the discovered structure
-yamlql sql -f docker-compose.yml "SELECT name, image FROM services"
+# After seeing tables from discover
+yamlql sql -f docker-compose.yml "SELECT web_image, db_image FROM services"
+yamlql sql -f deployment.yml "SELECT name, namespace FROM metadata"
 ```
 
-### 2. Understanding Relationships
+### 2. Understanding Data Distribution
 
-The `__relationships` table shows how tables are connected:
-```bash
-yamlql sql -f config.yml "SELECT * FROM __relationships"
-```
+The discover output shows you:
+- **Main tables**: Overview data with flattened columns
+- **Detail tables**: Complete configuration for specific components  
+- **Array tables**: List data in normalized form
 
-Output:
-```
-┌──────────────┬─────────────┬──────────────────┐
-│ source_table │ target_table│ relationship_type│
-├──────────────┼─────────────┼──────────────────┤
-│ spec         │ containers  │ parent-child     │
-└──────────────┴─────────────┴──────────────────┘
-```
+### 3. Finding Your Data
 
-### 3. Finding Child Tables
+If you can't find a field:
+1. Check flattened columns in parent tables (with underscore notation)
+2. Look in detail tables for the specific component
+3. Remember all original data is preserved somewhere
 
-Use `__tables` to find all child tables of a parent:
-```bash
-yamlql sql -f config.yml "
-  SELECT table_name 
-  FROM __tables 
-  WHERE parent_table = 'services'
-"
-```
+## Common Patterns
 
-## Best Practices
+### 1. Docker Compose
+- `services` - Main table with flattened service data
+- `services_[name]` - Detail table for each service
+- `services_[name]_[array]` - Array data for each service
 
-### 1. Always Discover First
-Run discover before writing queries to understand the schema:
+### 2. Kubernetes
+- `metadata` - Resource metadata
+- `spec` - Resource specification
+- `spec_[path]_[object]` - Nested objects in spec
+
+### 3. Configuration Files
+- `[section]` - Main configuration sections
+- `[section]_[subsection]` - Nested configuration
+- `[section]_[array]` - Lists within sections
+
+## Tips
+
+### 1. Always Run Discover First
+Before writing any queries, understand your schema:
 ```bash
 yamlql discover -f your-file.yml
 ```
 
-### 2. Note Column Types
-Pay attention to column types for:
-- String comparisons (VARCHAR)
-- Numeric operations (INTEGER, FLOAT)
-- Array handling (VARCHAR[])
+### 2. Look for Patterns
+YamlQL follows consistent naming patterns - once you understand them for one file type, you can predict them for similar files.
 
-### 3. Check Relationships
-Use metadata tables to understand table connections:
+### 3. Use List Output for Complex Tables
+For wide tables, use list output to see all columns:
 ```bash
-yamlql sql -f your-file.yml "SELECT * FROM __relationships"
+yamlql sql -f your-file.yml "SELECT * FROM complex_table LIMIT 1" --output list
 ```
 
-### 4. Understand Naming Patterns
-- Nested fields use underscores
-- Arrays are flattened with indices
-- Special characters are escaped
-
-## Common Issues
-
-### 1. Missing Tables
-If expected tables are missing:
-- Check if they contain any data
-- Verify the YAML structure
-- Look for nested objects
-
-### 2. Unexpected Column Names
-If column names look different:
-- Check for special character handling
-- Understand nesting conversion
-- Verify array handling
-
-### 3. Type Confusion
-If column types are unexpected:
-- Check the original YAML values
-- Understand type inference rules
-- Consider explicit type casting
+### 4. Remember Data Preservation
+YamlQL preserves all your original data - if you can't find something, look for flattened columns or related tables.
 
 ## Related Topics
 
-- [Schema Transformation](../concepts/schema-transformation.md)
-- [Metadata Tables](../concepts/metadata-tables.md)
 - [SQL Query Command](sql.md)
-- [Complex YAML Guide](../guides/complex-yaml.md) 
+- [Schema Transformation](../concepts/schema-transformation.md)
+- [Docker Compose Guide](../guides/docker-compose.md)
+- [Kubernetes Guide](../guides/kubernetes.md) 

@@ -29,7 +29,7 @@ yamlql sql -f file.yml "SELECT * FROM table_name"
 
 ## Native List/Array Support
 
-YamlQL now stores YAML lists of scalars as DuckDB arrays (native LIST type). To ensure type safety and prevent errors, **all elements in these lists are converted to strings (VARCHAR)**. This allows you to reliably query lists with mixed types.
+YamlQL stores YAML lists of scalars as DuckDB arrays (native LIST type). To ensure type safety and prevent errors, **all elements in these lists are converted to strings (VARCHAR)**. This allows you to reliably query lists with mixed types.
 
 For example, given this YAML:
 ```yaml
@@ -64,81 +64,79 @@ yamlql sql -f file.yml --sql-file myquery.sql
 ### Basic Queries
 
 ```bash
-# Select all fields
+# Select all fields from a Docker Compose services table
 yamlql sql -f docker-compose.yml "SELECT * FROM services"
 
 # Select specific fields
-yamlql sql -f docker-compose.yml "SELECT name, image FROM services"
+yamlql sql -f docker-compose.yml "SELECT web_image, db_image FROM services"
 
 # Filter results
-yamlql sql -f docker-compose.yml "SELECT * FROM services WHERE image LIKE '%postgres%'"
+yamlql sql -f docker-compose.yml "SELECT image FROM services_db WHERE image LIKE '%postgres%'"
 ```
 
 ### Working with Nested Data
 
 ```bash
-# Query nested fields
-yamlql sql -f config.yml "SELECT database_host, database_port FROM application"
+# Query nested fields in Kubernetes manifests
+yamlql sql -f deployment.yml "SELECT name, namespace FROM metadata"
 
-# Query arrays
-yamlql sql -f k8s.yml "SELECT name, ports FROM services"
+# Query arrays stored as separate tables
+yamlql sql -f docker-compose.yml "SELECT value FROM services_web_ports"
 ```
 
 ### Joins
 
 ```bash
-# Join parent and child tables
-yamlql sql -f deployment.yml "
-  SELECT c.name, c.image, s.replicas 
-  FROM spec_template_spec_containers c 
-  JOIN spec s ON true
+# Join related tables in Docker Compose
+yamlql sql -f docker-compose.yml "
+  SELECT s.web_image, p.value as port 
+  FROM services s 
+  JOIN services_web_ports p ON true
 "
 
-# Using metadata relationships
-yamlql sql -f config.yml "
-  SELECT s.name, s.type, p.value 
-  FROM services s 
-  JOIN service_properties p ON p.service_id = s._id
+# Join Kubernetes metadata and spec
+yamlql sql -f deployment.yml "
+  SELECT m.name, s.replicas 
+  FROM metadata m 
+  JOIN spec s ON true
 "
 ```
 
 ### Aggregations
 
 ```bash
-# Count services by image type
+# Count services by image type (Docker Compose)
 yamlql sql -f docker-compose.yml "
   SELECT 
-    REGEXP_EXTRACT(image, '^[^:]+') as base_image,
+    REGEXP_EXTRACT(web_image, '^[^:]+') as base_image,
     COUNT(*) as count 
   FROM services 
   GROUP BY base_image
 "
 
-# Find services with most environment variables
-yamlql sql -f docker-compose.yml "
+# Analyze Kubernetes container resources
+yamlql sql -f deployment.yml "
   SELECT 
-    name,
-    COUNT(*) as env_var_count 
-  FROM services_environment 
-  GROUP BY name 
-  ORDER BY env_var_count DESC
+    COUNT(*) as container_count,
+    COUNT(DISTINCT image) as unique_images
+  FROM spec_template_spec_containers
 "
 ```
 
-### Using Metadata Tables
+### Working with Arrays
 
 ```bash
-# List all available tables
-yamlql sql -f config.yml "SELECT * FROM __tables"
+# Unnest array values
+yamlql sql -f docker-compose.yml "
+  SELECT value as port
+  FROM services_web_ports
+"
 
-# Show table relationships
-yamlql sql -f config.yml "SELECT * FROM __relationships"
-
-# Find child tables of a specific parent
-yamlql sql -f config.yml "
-  SELECT table_name 
-  FROM __tables 
-  WHERE parent_table = 'services'
+# Check array length in flattened columns
+yamlql sql -f docker-compose.yml "
+  SELECT ARRAY_LENGTH(web_ports) as port_count 
+  FROM services
+  WHERE web_ports IS NOT NULL
 "
 ```
 
@@ -175,32 +173,23 @@ yamlql discover -f your-file.yml
 ```
 
 This helps you understand:
-- Available tables
+- Available tables and their structures
 - Column names and types
-- Table relationships
+- How YamlQL transformed your YAML structure
 
 ### 2. Column Naming
 
-- Nested fields use underscores: `database_host`
-- Array indices are preserved: `ports_0`, `ports_1`
+- Nested fields use underscores: `web_image`, `db_image`
+- Array tables have descriptive names: `services_web_ports`
 - **Special characters are sanitized**: Hyphens, spaces, and periods in YAML keys are replaced with underscores (`_`). For example, `service-name` becomes `service_name`.
 - Case sensitivity is preserved
 
-### 3. Working with Arrays
+### 3. Working with Tables
 
-```bash
-# Unnest array values
-yamlql sql -f config.yml "
-  SELECT name, UNNEST(ports) as port 
-  FROM services
-"
-
-# Check array length
-yamlql sql -f config.yml "
-  SELECT name, ARRAY_LENGTH(ports) as port_count 
-  FROM services
-"
-```
+YamlQL creates different types of tables:
+- **Main tables**: Direct mappings of YAML sections (e.g., `services`, `metadata`)
+- **Detail tables**: Separate tables for complex nested objects (e.g., `services_web`, `services_db`)
+- **Array tables**: Tables for arrays of scalars (e.g., `services_web_ports`)
 
 ### 4. Complex Queries
 
@@ -209,10 +198,10 @@ Use CTEs for better readability:
 yamlql sql -f docker-compose.yml "
   WITH service_stats AS (
     SELECT 
-      name,
-      ARRAY_LENGTH(ports) as port_count,
-      ARRAY_LENGTH(volumes) as volume_count
+      web_image,
+      ARRAY_LENGTH(web_ports) as port_count
     FROM services
+    WHERE web_ports IS NOT NULL
   )
   SELECT * FROM service_stats 
   WHERE port_count > 0
@@ -228,24 +217,30 @@ yamlql sql -f docker-compose.yml "
 
 - Use `--output table` for compact data:
   ```bash
-  yamlql sql -f config.yml "SELECT name, port FROM services" --output table
+  yamlql sql -f config.yml "SELECT web_image, db_image FROM services" --output table
   ```
 
 ## Common Issues
 
-### 1. Column Not Found
+### 1. Table Not Found
+```
+Error: Table 'unknown_table' not found
+```
+Solution: Use `discover` command to see available tables
+
+### 2. Column Not Found
 ```
 Error: Column 'unknown_field' not found
 ```
 Solution: Use `discover` command to verify column names
 
-### 2. Type Mismatch
+### 3. Type Mismatch
 ```
 Error: Type mismatch in comparison
 ```
 Solution: Use appropriate type casting (CAST or ::)
 
-### 3. Array Access
+### 4. Array Access
 ```
 Error: Array index out of bounds
 ```
@@ -254,7 +249,5 @@ Solution: Check array length before accessing indices
 ## Related Topics
 
 - [Schema Transformation](../concepts/schema-transformation.md)
-- [Metadata Tables](../concepts/metadata-tables.md)
-- [Relationships](../concepts/relationships.md)
 - [Docker Compose Guide](../guides/docker-compose.md)
 - [Kubernetes Guide](../guides/kubernetes.md) 
