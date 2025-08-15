@@ -17,8 +17,16 @@ class Database:
             tables: A list of tuples, where each tuple contains a table name
                     and the corresponding DataFrame.
         """
+        existing = set()
         for name, df in tables:
-            self.con.register(name, df)
+            candidate = name
+            i = 1
+            # Ensure unique table names inside this DuckDB connection
+            while candidate in existing:
+                candidate = f"{name}_{i}"
+                i += 1
+            self.con.register(candidate, df)
+            existing.add(candidate)
 
     def query(self, sql_query: str) -> pd.DataFrame:
         """

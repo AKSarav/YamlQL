@@ -68,10 +68,12 @@ def main(
             rich.print("[bold red]Error:[/bold red] The --execute/-e flag requires the YAMLQL_FILE environment variable to be set.", file=sys.stderr)
             raise typer.Exit(code=1)
 
+        file_list = file_env.split(":")  # allow colon-separated list
+
         if mode == "SQL":
-            cli_logic.run_query(execute, file_env, OutputFormat.AUTO)
+            cli_logic.run_query(execute, file_list, OutputFormat.AUTO)
         elif mode == "AI":
-            cli_logic.run_nlp(execute, file_env, OutputFormat.AUTO)
+            cli_logic.run_nlp(execute, file_list, OutputFormat.AUTO)
         else:
             rich.print("[bold red]Error:[/bold red] Invalid YAMLQL_MODE set. Use SQL or AI.", file=sys.stderr)
             raise typer.Exit(code=1)
@@ -84,7 +86,7 @@ def main(
 @app.command(name="sql")
 def sql_command(
     sql_query: List[str] = typer.Argument(None, help="The SQL query to execute. If not provided, an interactive prompt will be started."),
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to query."),
+    files: List[str] = typer.Option(..., "--file", "-f", help="Path(s) to YAML file(s) to query."),
     sql_file: str = typer.Option(None, "--sql-file", help="Path to a file containing the SQL query. Overrides the positional SQL query."),
     output: OutputFormat = typer.Option(
         OutputFormat.AUTO, 
@@ -99,28 +101,31 @@ def sql_command(
     If a query is provided as an argument or via --sql-file, it is executed directly.
     If no query is provided, an interactive SQL prompt is started for exploratory querying.
     """
+    file_list = list(files)
+
     if sql_file:
         with open(sql_file, 'r') as f:
             sql_query_str = f.read().strip()
-        cli_logic.run_query(sql_query_str, file, output)
+        cli_logic.run_query(sql_query_str, file_list, output)
     elif sql_query:
         sql_query_str = " ".join(sql_query)
-        cli_logic.run_query(sql_query_str, file, output)
+        cli_logic.run_query(sql_query_str, file_list, output)
     else:
         # No query provided, start interactive mode
-        cli_logic.run_interactive_sql(file, output)
+        cli_logic.run_interactive_sql(file_list, output)
 
 
 @app.command()
 def discover(
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to discover.")
+    files: List[str] = typer.Option(..., "--file", "-f", help="Path(s) to YAML file(s) to discover." )
 ):
     """
     Discovers and lists all tables and their columns from a YAML file.
     """
     try:
-        yql = YamlQL(file_path=file)
-        rich.print(f"Discovered tables in [bold cyan]{file}[/bold cyan]:")
+        file_list = list(files)
+        yql = YamlQL(file_paths=file_list)
+        rich.print(f"Discovered tables in [bold cyan]{', '.join(file_list)}[/bold cyan]:")
         
         # Use SHOW ALL TABLES to get all created tables from DuckDB
         for row in yql.db.con.execute("SHOW ALL TABLES;").fetchall():
@@ -146,7 +151,7 @@ def discover(
 @app.command(name="ai")
 def ai_command(
     question: str = typer.Argument(..., help="The natural language question to ask about the YAML file."),
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to query."),
+    files: List[str] = typer.Option(..., "--file", "-f", help="Path(s) to YAML file(s) to query."),
     output: OutputFormat = typer.Option(
         OutputFormat.AUTO, 
         "--output", 
@@ -158,7 +163,7 @@ def ai_command(
     Answers a natural language question about a YAML file by generating and executing a SQL query.
     Requires environment variables for the chosen LLM provider (e.g., YAMLQL_LLM_PROVIDER and OPENAI_API_KEY).
     """
-    cli_logic.run_nlp(question, file, output)
+    cli_logic.run_nlp(question, list(files), output)
 
 if __name__ == "__main__":
     app() 
