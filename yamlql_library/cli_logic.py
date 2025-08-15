@@ -11,12 +11,14 @@ from rich.console import Console
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from typing import List
 
-def run_query(sql_query: str, file: str, output: OutputFormat):
+
+def run_query(sql_query: str, files: List[str], output: OutputFormat):
     """Core logic for the 'query' command."""
     yql = None
     try:
-        yql = YamlQL(file_path=file)
+        yql = YamlQL(file_paths=files)
         results = yql.query(sql_query)
 
         if results.empty:
@@ -33,7 +35,7 @@ def run_query(sql_query: str, file: str, output: OutputFormat):
             _render_list(results)
         else:
             _render_table(results)
-
+            
     except FileNotFoundError as e:
         rich.print(f"[bold red]Error:[/bold red] {e}")
     except Exception as e:
@@ -42,12 +44,12 @@ def run_query(sql_query: str, file: str, output: OutputFormat):
         if yql:
             yql.close()
 
-def run_interactive_sql(file: str, output: OutputFormat):
+def run_interactive_sql(files: List[str], output: OutputFormat):
     """Starts an interactive SQL prompt."""
     yql = None
     try:
-        yql = YamlQL(file_path=file)
-        rich.print(f"[bold green]Connected to {file}.[/bold green]")
+        yql = YamlQL(file_paths=files)
+        rich.print(f"[bold green]Connected to {', '.join(files)}.[/bold green]")
         rich.print("Enter SQL commands. End with a semicolon (;) to execute.")
         rich.print("Type 'exit' or 'quit' to close.")
 
@@ -87,6 +89,7 @@ def run_interactive_sql(file: str, output: OutputFormat):
                             _render_list(results)
                         else:
                             _render_table(results)
+                    
                 except Exception as e:
                     rich.print(f"[bold red]Query Error:[/bold red] {e}")
 
@@ -101,11 +104,11 @@ def run_interactive_sql(file: str, output: OutputFormat):
             yql.close()
         rich.print("[bold]Exiting YamlQL.[/bold]")
 
-def run_nlp(question: str, file: str, output: OutputFormat):
+def run_nlp(question: str, files: List[str], output: OutputFormat):
     """Core logic for the 'nlp' command."""
     yql = None
     try:
-        yql = YamlQL(file_path=file)
+        yql = YamlQL(file_paths=files)
         
         schema_lines = []
         for row in yql.db.con.execute("SHOW ALL TABLES;").fetchall():
