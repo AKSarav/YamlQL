@@ -109,17 +109,7 @@ yamlql ai -f docker-compose.yml "Show me all database services and their ports"
 
 ## How It Works
 
-YamlQL intelligently transforms YAML structures into normalized database tables:
-
-1. **Dictionaries** → Flattened into single-row tables
-2. **Lists of objects** → Multi-row tables  
-3. **Nested structures** → Separate tables with foreign keys
-4. **Complex hierarchies** → Automatically extracted and linked
-
-```bash
-# Always start with discovery to see the generated schema
-yamlql discover -f your-file.yaml
-```
+Please refer to the [docs](https://docs.yamlql.com) for more details.
 
 ## Use Cases That Transform Teams
 
@@ -186,6 +176,22 @@ yamlql discover -f tests/test_data/sample.yaml
 ```
 
 ## Advanced Features
+
+### Transformation Strategies
+
+YamlQL offers two powerful strategies to control how your YAML file is transformed into database tables. You can select a strategy using the `--strategy` flag with the `discover` and `sql` commands.
+
+*   **`--strategy depth` (Default):** This strategy creates tables based on the nesting depth of your YAML. It's predictable and useful for consistently structured files. You can control the recursion level with the `--max-depth` flag (e.g., `--max-depth 2` for a flatter structure).
+
+*   **`--strategy adaptive`:** This intelligent strategy analyzes the content and shape of your YAML to create the most intuitive schema. It automatically separates complex objects into their own tables while flattening simpler ones. This is the recommended strategy for complex or varied YAML files. Recommended for Kubernetes Configuration files.
+
+```bash
+# Use the adaptive strategy for a Kubernetes file
+yamlql discover -f k8s.yaml --strategy adaptive
+
+# Use the depth strategy for a simple config file
+yamlql sql -f config.yaml --strategy depth --max-depth 2 "SELECT * FROM services"
+```
 
 ### Session-Based Queries
 ```bash

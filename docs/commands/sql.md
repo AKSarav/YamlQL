@@ -22,10 +22,12 @@ yamlql sql -f file.yml "SELECT * FROM table_name"
 ## Command Options
 
 | Option | Description | Default |
-|--------|-------------|---------|
+|---|---|---|
 | `--file`, `-f` | YAML file to query | Required |
 | `--output`, `-o` | Output format (`auto`, `table`, `list`) | `auto` |
-| `--sql-file` | Path to a file containing the SQL query. If provided, overrides the positional SQL query. | None |
+| `--sql-file` | Path to a file containing the SQL query. | None |
+| `--strategy` | The table creation strategy to use (`depth` or `adaptive`). | `depth` |
+| `--max-depth`| Maximum recursion depth for the `depth` strategy. | `5` |
 
 ## Native List/Array Support
 
@@ -50,6 +52,39 @@ SELECT UNNEST(mixed_list_options) AS option FROM my_table;
 -- Get the length of the array
 SELECT ARRAY_LENGTH(mixed_list_options) FROM my_table;
 ```
+
+## Interactive Mode
+
+If you run the `sql` command without providing a query, YamlQL will start an interactive SQL shell. This allows you to explore your data and run multiple queries in the same session.
+
+```bash
+yamlql sql -f your-file.yml
+```
+
+### Special Commands
+
+In addition to standard SQL, the interactive shell supports the following special commands:
+
+*   **`listtables`**: Displays a list of all available tables that were created from your YAML file.
+
+    ```
+    yamlql> listtables
+    Available tables:
+    - root
+    - metadata
+    - spec
+    ```
+
+*   **`listfields <table_name>`**: Shows the names and data types of all the columns in a specific table.
+
+    ```
+    yamlql> listfields metadata
+    Fields for table 'metadata':
+    - name: VARCHAR
+    - namespace: VARCHAR
+    ```
+
+*   **`exit`** or **`quit`**: Exits the interactive shell.
 
 ## Running SQL from a File
 

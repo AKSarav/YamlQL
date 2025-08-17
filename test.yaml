@@ -1,0 +1,3 @@
+config:
+  - name: feature_A
+    options: [True, 'A', 123]

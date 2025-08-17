@@ -8,7 +8,7 @@ class YamlQL:
     """
     The main class for querying YAML files with SQL.
     """
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, max_depth: int = 5, strategy: str = "depth"):
         """
         Initializes the YamlQL instance.
 
@@ -25,7 +25,7 @@ class YamlQL:
         data = loader.load()
 
         # 2. Transform the data
-        transformer = DataTransformer(data)
+        transformer = DataTransformer(data, max_depth=max_depth, strategy=strategy)
         self.tables = transformer.transform()
         
         # 3. Setup the database

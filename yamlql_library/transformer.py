@@ -5,9 +5,12 @@ from typing import Any, Dict, List, Tuple
 class DataTransformer:
     """Transforms nested dictionary data into relational tables."""
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: Dict[str, Any], max_depth: int = 5, strategy: str = "depth"):
         """Initializes the DataTransformer with the data to be transformed."""
         self.data = data
+        self.max_depth = max_depth
+        self.strategy = strategy
+        self.min_dict_size_for_table = 2
 
     def _find_and_extract_nested_lists(self, records: List[Dict], parent_table_name: str) -> Tuple[List[Dict], List[Tuple[str, pd.DataFrame]]]:
         """
@@ -108,7 +111,7 @@ class DataTransformer:
         MIN_DICT_SIZE_FOR_TABLE = 2  # Only create separate tables for dictionaries with 2+ keys
         
         # Check if we should stop recursing based on universal criteria
-        should_stop_recursing = depth >= MAX_DEPTH
+        should_stop_recursing = depth >= self.max_depth
 
         if isinstance(node_value, list):
             if not node_value: return
@@ -151,10 +154,14 @@ class DataTransformer:
                 self._process_node(child_value, new_table_name, tables_list, depth + 1)
 
     def transform(self) -> List[Tuple[str, pd.DataFrame]]:
-        """
-        Transforms the YAML data into a list of relational tables by recursively
-        processing the data structure with smart stopping conditions.
-        """
+        """Transforms the YAML data into a list of relational tables."""
+        if self.strategy == "adaptive":
+            return self._transform_adaptive()
+        else:
+            return self._transform_depth()
+
+    def _transform_depth(self) -> List[Tuple[str, pd.DataFrame]]:
+        """Transforms the data using the depth-based strategy."""
         all_tables = []
         data_copy = copy.deepcopy(self.data)
 
@@ -162,6 +169,13 @@ class DataTransformer:
         if isinstance(data_copy, list):
             self._process_node(data_copy, 'root', all_tables, depth=0)
             return all_tables
+
+        # Add at the top of transform() to handle root scalars
+        root_data = {k: v for k, v in self.data.items() if not isinstance(v, (dict, list))}
+        if root_data:
+            root_df = pd.json_normalize(root_data)
+            root_df.columns = [c.replace(' ', '_').replace('.', '_').replace('-', '_') for c in root_df.columns]
+            all_tables.append(('root', root_df))
 
         # Heuristic: If there is only one top-level key and its value is a dictionary
         # (e.g., a single document wrapper), step inside it for a more intuitive schema.
@@ -187,3 +201,63 @@ class DataTransformer:
             self._process_node(source_data, 'root', all_tables, depth=0)
 
         return all_tables 
+
+    def _transform_adaptive(self) -> List[Tuple[str, pd.DataFrame]]:
+        """Transforms the data using the adaptive strategy."""
+        all_tables = []
+        root_scalar_data = {}
+        top_level_objects = {}
+
+        for key, value in self.data.items():
+            if not isinstance(value, (dict, list)):
+                root_scalar_data[key] = value
+            else:
+                top_level_objects[key] = value
+                
+        if root_scalar_data:
+            df = pd.DataFrame([root_scalar_data])
+            df.columns = [c.replace(' ', '_').replace('.', '_').replace('-', '_') for c in df.columns]
+            all_tables.append(("root", df))
+
+        for table_name, node_value in top_level_objects.items():
+            self._process_node_adaptive(node_value, table_name, all_tables)
+
+        return all_tables
+    
+    def _process_node_adaptive(self, node_value: Any, table_name: str, tables_list: List):
+        """Recursively processes a node using the adaptive strategy."""
+        table_name = str(table_name).replace('-', '_')
+        
+        if isinstance(node_value, dict):
+            scalar_data = {}
+            # Separate scalars from dicts
+            for key, value in node_value.items():
+                if isinstance(value, dict):
+                    self._process_node_adaptive(value, f"{table_name}_{key}", tables_list)
+                elif isinstance(value, list):
+                    # Process lists as separate tables
+                    self._process_list_adaptive(value, f"{table_name}_{key}", tables_list)
+                else:
+                    scalar_data[key] = value
+            
+            if scalar_data:
+                df = pd.DataFrame([scalar_data])
+                df.columns = [c.replace(' ', '_').replace('.', '_').replace('-', '_') for c in df.columns]
+                tables_list.append((table_name, df))
+        elif isinstance(node_value, list):
+            self._process_list_adaptive(node_value, table_name, tables_list)
+
+    def _process_list_adaptive(self, list_value: List, table_name: str, tables_list: List):
+        """Processes a list using the adaptive strategy."""
+        if not list_value:
+            return
+        
+        # Check if it's a list of scalars or objects
+        if all(not isinstance(item, (dict, list)) for item in list_value):
+            df = pd.DataFrame({'value': [str(x) for x in list_value]})
+            tables_list.append((table_name, df))
+        elif all(isinstance(item, dict) for item in list_value):
+            # Normalize list of objects into a single table
+            df = pd.json_normalize(list_value, sep='_')
+            df.columns = [c.replace(' ', '_').replace('.', '_').replace('-', '_') for c in df.columns]
+            tables_list.append((table_name, df)) 

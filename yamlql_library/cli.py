@@ -2,6 +2,7 @@ import os
 import sys
 from dotenv import load_dotenv
 from typing import Tuple, List
+from enum import Enum
 
 # Load environment variables from .env file
 load_dotenv()
@@ -33,6 +34,10 @@ app = typer.Typer(
     help="YamlQL: A command-line tool to query YAML files using SQL.",
     no_args_is_help=True, # Show help if no command is given
 )
+
+class Strategy(str, Enum):
+    DEPTH = "depth"
+    ADAPTIVE = "adaptive"
 
 @app.callback(invoke_without_command=True)
 def main(
@@ -83,15 +88,12 @@ def main(
 
 @app.command(name="sql")
 def sql_command(
-    sql_query: List[str] = typer.Argument(None, help="The SQL query to execute. If not provided, an interactive prompt will be started."),
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to query."),
-    sql_file: str = typer.Option(None, "--sql-file", help="Path to a file containing the SQL query. Overrides the positional SQL query."),
-    output: OutputFormat = typer.Option(
-        OutputFormat.AUTO, 
-        "--output", 
-        "-o", 
-        help="Output format. 'auto' switches to list if table exceeds terminal width."
-    )
+    sql_query: List[str] = typer.Argument(None, help="The SQL query to execute."),
+    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file."),
+    sql_file: str = typer.Option(None, "--sql-file", help="Path to a file containing the SQL query."),
+    output: OutputFormat = typer.Option(OutputFormat.AUTO, "--output", "-o", help="Output format."),
+    max_depth: int = typer.Option(5, "--max-depth", help="Maximum recursion depth for 'depth' strategy."),
+    strategy: Strategy = typer.Option(Strategy.DEPTH, "--strategy", help="The table creation strategy to use.")
 ):
     """
     Run a SQL query against a YAML file.
@@ -102,24 +104,26 @@ def sql_command(
     if sql_file:
         with open(sql_file, 'r') as f:
             sql_query_str = f.read().strip()
-        cli_logic.run_query(sql_query_str, file, output)
+        cli_logic.run_query(sql_query_str, file, output, max_depth, strategy)
     elif sql_query:
         sql_query_str = " ".join(sql_query)
-        cli_logic.run_query(sql_query_str, file, output)
+        cli_logic.run_query(sql_query_str, file, output, max_depth, strategy)
     else:
         # No query provided, start interactive mode
-        cli_logic.run_interactive_sql(file, output)
+        cli_logic.run_interactive_sql(file, output, max_depth, strategy)
 
 
 @app.command()
 def discover(
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to discover.")
+    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to discover."),
+    max_depth: int = typer.Option(5, "--max-depth", help="Maximum recursion depth for 'depth' strategy."),
+    strategy: Strategy = typer.Option(Strategy.DEPTH, "--strategy", help="The table creation strategy to use.")
 ):
     """
     Discovers and lists all tables and their columns from a YAML file.
     """
     try:
-        yql = YamlQL(file_path=file)
+        yql = YamlQL(file_path=file, max_depth=max_depth, strategy=strategy)
         rich.print(f"Discovered tables in [bold cyan]{file}[/bold cyan]:")
         
         # Use SHOW ALL TABLES to get all created tables from DuckDB
