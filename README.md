@@ -109,17 +109,7 @@ yamlql ai -f docker-compose.yml "Show me all database services and their ports"
 
 ## How It Works
 
-YamlQL intelligently transforms YAML structures into normalized database tables:
-
-1. **Dictionaries** → Flattened into single-row tables
-2. **Lists of objects** → Multi-row tables  
-3. **Nested structures** → Separate tables with foreign keys
-4. **Complex hierarchies** → Automatically extracted and linked
-
-```bash
-# Always start with discovery to see the generated schema
-yamlql discover -f your-file.yaml
-```
+Please refer to the [docs](https://docs.yamlql.com) for more details.
 
 ## Use Cases That Transform Teams
 
