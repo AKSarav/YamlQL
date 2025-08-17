@@ -48,9 +48,9 @@ def run_interactive_sql(file: str, output: OutputFormat, max_depth: int = 5, str
     try:
         yql = YamlQL(file_path=file, max_depth=max_depth, strategy=strategy)
         rich.print(f"[bold green]Connected to {file}.[/bold green]")
-        rich.print("Enter SQL commands. End with a semicolon (;) to execute.")
-        rich.print("Type 'exit' or 'quit' to close.")
-
+        rich.print("Enter SQL commands (end with a semicolon) or interactive commands.")
+        rich.print("Interactive commands: [bold cyan]listtables[/bold cyan], [bold cyan]listfields <table_name>[/bold cyan], [bold cyan]exit[/bold cyan]")
+        
         session = PromptSession(
             history=FileHistory(os.path.expanduser("~/.yamlql_history")),
             auto_suggest=AutoSuggestFromHistory()
@@ -61,10 +61,40 @@ def run_interactive_sql(file: str, output: OutputFormat, max_depth: int = 5, str
         while True:
             prompt_text = "yamlql> " if not multiline_buffer else "     ...> "
             line = session.prompt(prompt_text)
+            command = line.strip().lower()
 
-            if line.strip().lower() in ('exit', 'quit'):
+            if command in ('exit', 'quit'):
                 break
-            
+
+            if command == 'listtables':
+                tables = yql.db.con.execute("SHOW ALL TABLES;").fetchall()
+                if tables:
+                    rich.print("[bold green]Available tables:[/bold green]")
+                    for table in tables:
+                        rich.print(f"- {table[2]}")
+                else:
+                    rich.print("[yellow]No tables found.[/yellow]")
+                continue
+
+            if command.startswith('listfields'):
+                parts = line.strip().split()
+                if len(parts) < 2:
+                    rich.print("[bold red]Error:[/bold red] Please provide a table name. Usage: listfields <table_name>")
+                    continue
+                
+                table_name = parts[1]
+                try:
+                    columns = yql.db.con.execute(f"PRAGMA table_info('{table_name}');").fetchall()
+                    if columns:
+                        rich.print(f"[bold green]Fields for table '{table_name}':[/bold green]")
+                        for col in columns:
+                            rich.print(f"- [bold]{col[1]}[/bold]: {col[2]}")
+                    else:
+                        rich.print(f"[bold red]Error:[/bold red] Table '{table_name}' not found or has no columns.")
+                except Exception as e:
+                    rich.print(f"[bold red]Error:[/bold red] {e}")
+                continue
+
             multiline_buffer.append(line)
             
             # If the line ends with a semicolon, it's time to execute

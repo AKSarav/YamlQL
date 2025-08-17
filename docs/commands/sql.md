@@ -53,6 +53,39 @@ SELECT UNNEST(mixed_list_options) AS option FROM my_table;
 SELECT ARRAY_LENGTH(mixed_list_options) FROM my_table;
 ```
 
+## Interactive Mode
+
+If you run the `sql` command without providing a query, YamlQL will start an interactive SQL shell. This allows you to explore your data and run multiple queries in the same session.
+
+```bash
+yamlql sql -f your-file.yml
+```
+
+### Special Commands
+
+In addition to standard SQL, the interactive shell supports the following special commands:
+
+*   **`listtables`**: Displays a list of all available tables that were created from your YAML file.
+
+    ```
+    yamlql> listtables
+    Available tables:
+    - root
+    - metadata
+    - spec
+    ```
+
+*   **`listfields <table_name>`**: Shows the names and data types of all the columns in a specific table.
+
+    ```
+    yamlql> listfields metadata
+    Fields for table 'metadata':
+    - name: VARCHAR
+    - namespace: VARCHAR
+    ```
+
+*   **`exit`** or **`quit`**: Exits the interactive shell.
+
 ## Running SQL from a File
 
 For complex queries or to avoid shell quoting issues, use the `--sql-file` option:
