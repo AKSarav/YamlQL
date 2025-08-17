@@ -177,6 +177,24 @@ yamlql discover -f tests/test_data/sample.yaml
 
 ## Advanced Features
 
+### Session-Based Queries
+
+For a more streamlined workflow, you can set your configuration once using environment variables and then run multiple queries without repeating the arguments.
+
+```bash
+# Set your file and query mode once
+export YAMLQL_FILE="tests/test_data/kubernetes_deployment.yaml"
+export YAMLQL_MODE="SQL"
+
+# Now you can execute queries directly with the -e flag
+yamlql -e "SELECT name, image FROM spec_template_spec_containers"
+yamlql -e "SELECT replicas FROM spec"
+
+# Switch to AI mode
+export YAMLQL_MODE="AI"
+yamlql -e "How many containers are there?"
+```
+
 ### Transformation Strategies
 
 YamlQL offers two powerful strategies to control how your YAML file is transformed into database tables. You can select a strategy using the `--strategy` flag with the `discover` and `sql` commands.
@@ -191,14 +209,6 @@ yamlql discover -f k8s.yaml --strategy adaptive
 
 # Use the depth strategy for a simple config file
 yamlql sql -f config.yaml --strategy depth --max-depth 2 "SELECT * FROM services"
-```
-
-### Session-Based Queries
-```bash
-# Set file once, query repeatedly
-export YAMLQL_FILE="config.yaml"
-yamlql -e "SELECT * FROM services"
-yamlql -e "SELECT COUNT(*) FROM containers"
 ```
 
 ### Output Formats
