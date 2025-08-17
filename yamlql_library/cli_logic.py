@@ -12,11 +12,11 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
-def run_query(sql_query: str, file: str, output: OutputFormat):
+def run_query(sql_query: str, file: str, output: OutputFormat, max_depth: int = 5, strategy: str = "depth"):
     """Core logic for the 'query' command."""
     yql = None
     try:
-        yql = YamlQL(file_path=file)
+        yql = YamlQL(file_path=file, max_depth=max_depth, strategy=strategy)
         results = yql.query(sql_query)
 
         if results.empty:
@@ -42,11 +42,11 @@ def run_query(sql_query: str, file: str, output: OutputFormat):
         if yql:
             yql.close()
 
-def run_interactive_sql(file: str, output: OutputFormat):
+def run_interactive_sql(file: str, output: OutputFormat, max_depth: int = 5, strategy: str = "depth"):
     """Starts an interactive SQL prompt."""
     yql = None
     try:
-        yql = YamlQL(file_path=file)
+        yql = YamlQL(file_path=file, max_depth=max_depth, strategy=strategy)
         rich.print(f"[bold green]Connected to {file}.[/bold green]")
         rich.print("Enter SQL commands. End with a semicolon (;) to execute.")
         rich.print("Type 'exit' or 'quit' to close.")

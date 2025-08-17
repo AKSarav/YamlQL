@@ -22,10 +22,12 @@ yamlql sql -f file.yml "SELECT * FROM table_name"
 ## Command Options
 
 | Option | Description | Default |
-|--------|-------------|---------|
+|---|---|---|
 | `--file`, `-f` | YAML file to query | Required |
 | `--output`, `-o` | Output format (`auto`, `table`, `list`) | `auto` |
-| `--sql-file` | Path to a file containing the SQL query. If provided, overrides the positional SQL query. | None |
+| `--sql-file` | Path to a file containing the SQL query. | None |
+| `--strategy` | The table creation strategy to use (`depth` or `adaptive`). | `depth` |
+| `--max-depth`| Maximum recursion depth for the `depth` strategy. | `5` |
 
 ## Native List/Array Support
 

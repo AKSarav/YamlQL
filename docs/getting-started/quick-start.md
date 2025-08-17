@@ -12,9 +12,14 @@ Before querying a YAML file, it's helpful to understand its structure. Use the `
 yamlql discover -f your-file.yml
 ```
 
-This will show:
-- Available tables and their column names and types
-- Relationships between tables created by YamlQL's intelligent transformation
+This will show the tables and columns created by YamlQL's default `depth` transformation strategy.
+
+**Advanced Tip:** YamlQL offers two transformation strategies: `depth` (default) and `adaptive`. The `adaptive` strategy is great for complex files like Kubernetes manifests. You can learn more in our guide to [Schema Transformation](../concepts/schema-transformation.md).
+
+```bash
+# Try the adaptive strategy on a complex file
+yamlql discover -f k8s.yaml --strategy adaptive
+```
 
 ### 2. Running SQL Queries
 
