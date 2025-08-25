@@ -7,8 +7,11 @@ YamlQL can be configured using environment variables and command-line options. T
 ### Core Variables
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+|---|---|---|
 | `YAMLQL_FILE` | Default YAML file to query | `export YAMLQL_FILE="config.yml"` |
+| `YAMLQL_STRATEGY`| The transformation strategy (`depth` or `adaptive`). | `export YAMLQL_STRATEGY="adaptive"` |
+| `YAMLQL_MAX_DEPTH`| Maximum recursion depth for the `depth` strategy. | `export YAMLQL_MAX_DEPTH=2` |
+| `YAMLQL_OUTPUT`| The output format (`auto`, `table`, `list`). | `export YAMLQL_OUTPUT="list"` |
 | `YAMLQL_MODE` | Default query mode (`SQL` or `AI`) | `export YAMLQL_MODE="SQL"` |
 
 ### AI Provider Configuration
@@ -102,35 +105,36 @@ YamlQL supports three output formats:
 
 ## Configuration Examples
 
-### Basic SQL Mode
+### Session-Based SQL Queries
+
+You can create a session-like experience by setting your file and query mode in environment variables. This allows you to run multiple queries without repeating the arguments.
+
 ```bash
-# Set default file
-export YAMLQL_FILE="docker-compose.yml"
+# Set your file and default to SQL mode
+export YAMLQL_FILE="tests/test_data/kubernetes_deployment.yaml"
 export YAMLQL_MODE="SQL"
 
-# Now you can run queries directly
-yamlql -e "SELECT * FROM services"
+# Now you can execute queries directly with the -e flag
+yamlql -e "SELECT name, image FROM spec_template_spec_containers"
+# ... (run more queries)
+yamlql -e "SELECT replicas FROM spec"
 ```
 
-### AI Mode with OpenAI
+### Session-Based AI Queries
+
+The same session-based workflow can be used for AI queries.
+
 ```bash
-# Set up OpenAI
+# Set up your file, AI provider, and API key
+export YAMLQL_FILE="tests/test_data/kubernetes_deployment.yaml"
 export YAMLQL_LLM_PROVIDER="OpenAI"
 export OPENAI_API_KEY="your-key"
 export YAMLQL_MODE="AI"
 
-# Now you can ask questions directly
-yamlql -e "What containers are using the postgres image?"
-```
-
-### Mixed Usage
-```bash
-# Default to SQL mode
-export YAMLQL_MODE="SQL"
-
-# Override with specific commands
-yamlql sql -f config.yml "SELECT * FROM services"
-yamlql ai -f config.yml "List all services"
+# Now you can ask questions directly with the -e flag
+yamlql -e "What is the CPU limit for the nginx container?"
+# ... (ask more questions)
+yamlql -e "How many containers are there?"
 ```
 
 ## Best Practices
@@ -150,32 +154,4 @@ yamlql ai -f config.yml "List all services"
 
 4. **File Handling**
    - Use `YAMLQL_FILE` for frequently accessed files
-   - Use `-f` option for one-off queries
-
-## Troubleshooting
-
-### Common Configuration Issues
-
-1. **Missing Environment Variables**
-   ```
-   Error: YAMLQL_FILE environment variable not set
-   ```
-   Solution: Set `YAMLQL_FILE` or use `-f` option
-
-2. **Invalid Mode**
-   ```
-   Error: Invalid YAMLQL_MODE set
-   ```
-   Solution: Use `SQL` or `AI` (case-sensitive)
-
-3. **AI Provider Issues**
-   ```
-   Error: YAMLQL_LLM_PROVIDER environment variable not set
-   ```
-   Solution: Set provider and corresponding API key
-
-### Getting Help
-
-- Check the [Troubleshooting Guide](../troubleshooting.md)
-- Use `yamlql --help` for command-line help
-- Visit the [GitHub repository](https://github.com/AKSarav/YamlQL) for issues 
+   - Use `

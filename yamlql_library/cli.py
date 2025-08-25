@@ -89,11 +89,11 @@ def main(
 @app.command(name="sql")
 def sql_command(
     sql_query: List[str] = typer.Argument(None, help="The SQL query to execute."),
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file."),
+    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file.", envvar="YAMLQL_FILE"),
     sql_file: str = typer.Option(None, "--sql-file", help="Path to a file containing the SQL query."),
-    output: OutputFormat = typer.Option(OutputFormat.AUTO, "--output", "-o", help="Output format."),
-    max_depth: int = typer.Option(5, "--max-depth", help="Maximum recursion depth for 'depth' strategy."),
-    strategy: Strategy = typer.Option(Strategy.DEPTH, "--strategy", help="The table creation strategy to use.")
+    output: OutputFormat = typer.Option(OutputFormat.AUTO, "--output", "-o", help="Output format.", envvar="YAMLQL_OUTPUT"),
+    max_depth: int = typer.Option(5, "--max-depth", help="Maximum recursion depth for 'depth' strategy.", envvar="YAMLQL_MAX_DEPTH"),
+    strategy: Strategy = typer.Option(Strategy.DEPTH, "--strategy", help="The table creation strategy to use.", envvar="YAMLQL_STRATEGY")
 ):
     """
     Run a SQL query against a YAML file.
@@ -115,9 +115,9 @@ def sql_command(
 
 @app.command()
 def discover(
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to discover."),
-    max_depth: int = typer.Option(5, "--max-depth", help="Maximum recursion depth for 'depth' strategy."),
-    strategy: Strategy = typer.Option(Strategy.DEPTH, "--strategy", help="The table creation strategy to use.")
+    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to discover.", envvar="YAMLQL_FILE"),
+    max_depth: int = typer.Option(5, "--max-depth", help="Maximum recursion depth for 'depth' strategy.", envvar="YAMLQL_MAX_DEPTH"),
+    strategy: Strategy = typer.Option(Strategy.DEPTH, "--strategy", help="The table creation strategy to use.", envvar="YAMLQL_STRATEGY")
 ):
     """
     Discovers and lists all tables and their columns from a YAML file.
@@ -150,12 +150,13 @@ def discover(
 @app.command(name="ai")
 def ai_command(
     question: str = typer.Argument(..., help="The natural language question to ask about the YAML file."),
-    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to query."),
+    file: str = typer.Option(..., "--file", "-f", help="Path to the YAML file to query.", envvar="YAMLQL_FILE"),
     output: OutputFormat = typer.Option(
         OutputFormat.AUTO, 
         "--output", 
         "-o", 
-        help="Output format. 'auto' switches to list if table exceeds terminal width."
+        help="Output format.",
+        envvar="YAMLQL_OUTPUT"
     )
 ):
     """
